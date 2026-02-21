@@ -68,11 +68,7 @@ python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resum
 
 ### 5) Run tokenizer tests
 
-Install test dependencies (manual, optional for runtime-only use):
-
-```bash
-python -m pip install pytest pytest-cov
-```
+Test dependencies are included in `requirements.txt`.
 
 Run the tokenizer suite:
 

@@ -14,6 +14,28 @@ Format:
 
 ## Unreleased
 
+### 2026-02-21 (Unit test dependency alignment)
+
+Summary:
+
+1. Added explicit unit-test dependencies to `requirements.txt` so pytest-based testing works after the standard project install.
+2. Updated onboarding guidance to reflect that separate manual test dependency installation is no longer required.
+
+Impacted files/modules:
+
+1. `requirements.txt`
+2. `README.md`
+3. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe -m "not integration"` passed (`36 passed, 4 deselected`).
+
+Documentation updates:
+
+1. Updated test setup guidance in `README.md`.
+2. Appended this change entry to `docs/CHANGELOG.md`.
+
 ### 2026-02-21
 
 Summary:
