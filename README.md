@@ -1,147 +1,100 @@
 # LLM Training Pipeline
 
-This repository is a starter implementation for an **LLM training program** based on
-`llm_training_overview.md`.  
-The intent is to preserve the same stages you need at scale while remaining runnable on a single machine.
+This repository is a practical, versioned scaffold for building an end-to-end LLM training program.
+It is intentionally laptop-runnable today and structured to scale to AWS-based distributed training and inference later.
 
-## Project goal
+## Project goals
 
-Build a disciplined, repeatable pipeline that can progress from:
+1. Start from reproducible local workflows for data, tokenization, pretraining, SFT, and evaluation.
+2. Keep interfaces stable so scale-up is mostly infrastructure swap, not project rewrite.
+3. Build governance, provenance, and checkpoint discipline early, not as a retrofit.
 
-- raw text ingestion and cleaning
-- tokenization and pretraining
-- lightweight instruction tuning
-- basic evaluation
-- controlled scale-up to multi-node AWS training
+## Guiding documents
 
-The key design principle is to keep interfaces stable so moving from laptop workflows to
-SageMaker/EKS/ParallelCluster/HyperPod is mostly an infrastructure swap, not a project rewrite.
+- `README.md`: public entrypoint and quick start.
+- `llm_training_overview.md`: north-star architecture and full program sequence.
+- `docs/README.md`: documentation index and update policy.
+- `docs/PROJECT_STATUS.md`: implemented status and current gaps.
+- `docs/NEXT_STEPS.md`: stage-aligned implementation roadmap.
+- `docs/IMPLEMENTED_STEPS.md`: detailed implementation docs for every built step.
+- `docs/TOKENIZER_BPE.md`: detailed tokenizer architecture and behavior.
+- `docs/DEVELOPMENT_WORKFLOW.md`: contributor workflow and testing/documentation expectations.
+- `docs/CHANGELOG.md`: change history and release notes.
+- `AGENTS.md`: operating guide for Codex and human contributors.
 
-## What this repo contains
+## What exists today
 
-- `llm_training_overview.md`: source of truth for pipeline stages and design decisions
-- `requirements.txt`: Python dependencies
-- `scripts/`:
-  - `01_make_corpus.py`
-  - `02_train_tokenizer.py`
-  - `03_pretrain.py`
-  - `04_sft_lora.py`
-  - `05_eval_generate.py`
-- `configs/` (optional): place shared experiment configs
-- `data/`:
-  - `raw/` and `processed/`
-- `artifacts/`:
-  - `tokenizer/`
-  - `models/`
-  - `eval/`
+- `scripts/01_make_corpus.py`: creates local corpus files under `data/raw/`.
+- `scripts/02_train_tokenizer.py`: trains a local GPT-2 style UTF-8 byte-level BPE tokenizer with resume support.
+- `scripts/03_pretrain.py`: tiny GPT-2 style pretraining from local data.
+- `scripts/04_sft_lora.py`: lightweight LoRA instruction tuning.
+- `scripts/05_eval_generate.py`: basic generation smoke test.
+- `configs/`: shared config files, including `configs/tokenizer_bpe.yaml`.
+- `artifacts/`: tokenizer/model/eval outputs.
 
-## Governance and operational guardrails
+## Quick start (public users)
 
-Before training anything, define:
-
-- model spec (domains, context length, safety boundaries, chat format)
-- data policy (licensing, PII handling, retention, provenance)
-- risk register and eval gates
-- artifact/version policy for datasets, tokenizers, checkpoints, and eval outputs
-
-This is required to avoid legal, reproducibility, and safety risks later in the pipeline.
-
-## Quick start
-
-1. Create and activate a virtual environment.
-2. Install dependencies:
+### 1) Clone and enter the repo
 
 ```bash
+git clone <your-repo-url>
+cd llm_training
+```
+
+### 2) Create a Python environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-3. Run the steps below in order.
-
-## Minimal laptop pipeline
-
-### 1) Create corpus
-
-Run:
+### 3) Run the minimal local pipeline
 
 ```bash
 python scripts/01_make_corpus.py
-```
-
-This downloads a small corpus and writes tokenizable text to `data/raw/`.
-
-### 2) Pin a tokenizer
-
-Run:
-
-```bash
-python scripts/02_train_tokenizer.py
-```
-
-This saves a tokenizer artifact under `artifacts/tokenizer/gpt2/`.
-
-### 3) Tiny pretrain
-
-Run:
-
-```bash
+python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml
 python scripts/03_pretrain.py
-```
-
-Produces a tiny GPT-2 style checkpoint in:
-
-- `artifacts/models/tiny-gpt2-from-scratch/`
-
-If you run without CUDA, set `fp16=False` in `scripts/03_pretrain.py`.
-
-### 4) Minimal SFT with LoRA
-
-Run:
-
-```bash
 python scripts/04_sft_lora.py
-```
-
-This fine-tunes the pretrained checkpoint with a parameter-efficient adapter and saves
-`artifacts/models/tiny-gpt2-sft-lora/`.
-
-### 5) Quick smoke test
-
-Run:
-
-```bash
 python scripts/05_eval_generate.py
 ```
 
-Generates a short response from a prompt in `scripts/05_eval_generate.py`.
+### 4) Resume tokenizer training after interruption (optional)
 
-## Mapping to the full "North Star"
+```bash
+python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
+```
 
-Each stage in this repo maps directly to the larger AWS-oriented program described in
-`llm_training_overview.md`:
+Run outputs are written to `artifacts/`.
 
-- `data/raw` + `data/processed` -> S3 data lake (`raw/`, `clean/`, partitioned by metadata)
-- local scripts -> distributed Spark/EMR/Glue/Bath ETL jobs
-- JSONL/shards -> streaming dataset shards in S3/FSx
-- tiny local model -> distributed training with FSDP/ZeRO/tensor parallel/pipeline parallel on AWS
-- local checkpoints -> durable S3-backed checkpoint strategy
-- local eval output -> versioned eval artifacts tied to dataset + tokenizer + model hashes
+## Documentation system
 
-## Planned maturity path
+The documentation system is split by intent:
 
-- v0: governance + laptop pipeline
-- v1: dataset versioning, dedup/contamination checks, tokenizer versioning
-- v2: cluster scheduling, checkpointing, evaluation gates
-- v3: advanced post-training (DPO/RLAIF/RLHF) and serving optimizations (quantization/distillation/inference tuning)
+- Entrypoint and onboarding: `README.md`
+- Architecture and end-state: `llm_training_overview.md`
+- Status and gaps: `docs/PROJECT_STATUS.md`
+- Stage roadmap: `docs/NEXT_STEPS.md`
+- Detailed implemented behavior: `docs/IMPLEMENTED_STEPS.md`
+- Detailed tokenizer implementation: `docs/TOKENIZER_BPE.md`
+- Contributor workflow and testing expectations: `docs/DEVELOPMENT_WORKFLOW.md`
+- Change history: `docs/CHANGELOG.md`
+- Repository policies and agent behavior: `AGENTS.md`
+- Tokenizer reference details: `CONFIG.md`, `CHECKPOINTING.md`, `technical_spec_bpe_train_tokenizer.md`
 
-## FAQ
+When implementation changes behavior, update both:
 
-- **Why this repo is small?**  
-  It is intentionally minimal so you can validate the full sequence of stages before adding operational complexity.
-- **Can this run at scale?**  
-  Yes, by keeping interfaces stable and swapping compute/storage layers as described in the guide.
+1. the most specific affected document in `docs/`
+2. this `README.md` if onboarding, commands, or expected outputs changed
 
-## Contributing
+## Scale-up intent
 
-- Keep interfaces stable between laptop and cloud paths.
-- Track package dependencies when adding training, data, or AWS integration code.
-- Extend scripts in small increments and log dataset/version changes with notes in commit messages.
+The local scripts are not the end-state. They are the proving ground for:
+
+- strict artifact/version discipline
+- deterministic and resumable training workflows
+- testable stage boundaries
+- clean transition to cloud orchestration and large-scale training/inference on AWS
+
+For the full architecture, sequencing, and cloud rationale, follow `llm_training_overview.md`.

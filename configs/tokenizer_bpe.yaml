@@ -1,0 +1,46 @@
+run:
+  output_dir: "artifacts/tokenizer/runs"
+  seed: 0
+  log_level: "INFO"
+  structured_logs: true
+
+data:
+  input_paths:
+    - "data/raw/train.txt"
+  input_format: "text"
+  jsonl_text_field: "text"
+  decode_errors: "replace"
+  normalize: "none"
+  max_bytes: null
+  max_lines: null
+  num_workers: 4
+  batch_lines: 2000
+  min_piece_freq: 2
+  max_unique_pieces: 2000000
+
+pretokenizer:
+  pattern: "gpt2_fast"
+  custom_pattern: null
+  flags: []
+
+bpe:
+  vocab_size: 50000
+  min_merge_freq: 2
+  max_merges: null
+  max_word_types: 1500000
+  max_piece_bytes: 200
+  tie_break: "lexicographic"
+
+special_tokens:
+  tokens:
+    - "<|endoftext|>"
+    - "<|pad|>"
+  placement: "end"
+
+checkpointing:
+  wal_fsync_each_commit: true
+  snapshot_every_merges: 200
+  snapshot_every_seconds: 300
+  keep_last_snapshots: 3
+  stage1_snapshot_every_batches: 50
+

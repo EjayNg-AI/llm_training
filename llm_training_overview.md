@@ -1,5 +1,10 @@
 ## North Star: a modern large language model training pipeline you can realistically build on AWS (operated from Singapore)
 
+Canonical stage heading contract:
+
+1. The stage headings in this document are mirrored exactly in `docs/NEXT_STEPS.md`.
+2. If a stage heading changes here, the matching heading in `docs/NEXT_STEPS.md` must be updated in the same change.
+
 This is the “gold standard” end state: not one monolithic system, but a set of **disciplined, versioned pipelines** that turn raw data into (1) a pretrained foundation model, (2) post-trained aligned variants, and (3) deployable inference artifacts—with **repeatability, governance, and auditability**.
 
 I’ll describe the stages in the order you’d implement them in a serious program, and I’ll call out AWS-native building blocks and the “gotchas” that matter at scale.
@@ -650,7 +655,7 @@ If you keep the *interfaces* stable, scaling is mostly swapping implementations:
 
 ---
 
-## A blunt but useful critique (so your “gold standard” stays real)
+## A blunt but useful critique
 
 Most teams over-focus on:
 
@@ -668,11 +673,7 @@ Most teams over-focus on:
 
 If you build the North Star with **data + eval discipline** as the backbone, scaling compute later will actually pay off.
 
-If you want, I can also propose:
-
-* a **stage-by-stage maturity rubric** (what “done” means at v0/v1/v2),
-* a **North Star AWS reference architecture** (control plane vs data plane vs training plane),
-* and a **single YAML config schema** that both the laptop scripts and the cloud training jobs share.
+---
 
 [1]: https://aws.amazon.com/fsx/lustre/?utm_source=chatgpt.com "Amazon FSx for Lustre | Cloud File Storage Integrated ..."
 [2]: https://docs.aws.amazon.com/fsx/latest/LustreGuide/what-is.html?utm_source=chatgpt.com "What is Amazon FSx for Lustre?"
