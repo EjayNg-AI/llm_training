@@ -50,7 +50,7 @@ When a pipeline step changes, update `docs/IMPLEMENTED_STEPS.md` and append an e
 - Codex: use `llm_training_overview.md` to align implementation decisions with long-term architecture.
 - Both: use `AGENTS.md` for repository operating rules and policy constraints.
 - Tokenizer-specific references remain:
-  - `technical_spec_bpe_train_tokenizer.md`
+  - `docs/TOKENIZER_BPE.md`
   - `CONFIG.md`
   - `CHECKPOINTING.md`
 

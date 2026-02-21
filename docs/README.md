@@ -24,7 +24,6 @@ Related docs outside `docs/`:
 - `AGENTS.md`: operating rules for Codex and repository contributors.
 - `CONFIG.md`: tokenizer config reference.
 - `CHECKPOINTING.md`: tokenizer checkpoint/WAL recovery model.
-- `technical_spec_bpe_train_tokenizer.md`: byte-level BPE trainer specification.
 
 ## Update policy
 

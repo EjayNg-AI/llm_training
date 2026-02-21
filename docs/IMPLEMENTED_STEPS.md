@@ -107,7 +107,6 @@ Detailed docs:
 1. `docs/TOKENIZER_BPE.md`
 2. `CONFIG.md`
 3. `CHECKPOINTING.md`
-4. `technical_spec_bpe_train_tokenizer.md`
 
 Known limitations:
 

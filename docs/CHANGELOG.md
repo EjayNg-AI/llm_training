@@ -14,6 +14,33 @@ Format:
 
 ## Unreleased
 
+### 2026-02-21 (Tokenizer spec consolidation)
+
+Summary:
+
+1. Consolidated tokenizer technical specification content into `docs/TOKENIZER_BPE.md` and expanded it into a full rebuild guide.
+2. Added detailed algorithm and operational coverage for pretokenization regexes, Stage 1 parallel counting, Stage 3 incremental merge updates, WAL recovery, and export/runtime contracts.
+3. Removed `technical_spec_bpe_train_tokenizer.md` so tokenizer documentation now has a single official source.
+
+Impacted files/modules:
+
+1. `docs/TOKENIZER_BPE.md`
+2. `technical_spec_bpe_train_tokenizer.md`
+3. `README.md`
+4. `docs/README.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `AGENTS.md`
+7. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Documentation-only update; runtime tests not executed.
+
+Documentation updates:
+
+1. Replaced the previous tokenizer implementation summary with an implementation-grade official specification in `docs/TOKENIZER_BPE.md`.
+2. Removed legacy technical-spec references from repository documentation.
+
 ### 2026-02-21 (Unit test dependency alignment)
 
 Summary:

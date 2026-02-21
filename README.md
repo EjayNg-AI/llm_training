@@ -97,7 +97,7 @@ The documentation system is split by intent:
 - Contributor workflow and testing expectations: `docs/DEVELOPMENT_WORKFLOW.md`
 - Change history: `docs/CHANGELOG.md`
 - Repository policies and agent behavior: `AGENTS.md`
-- Tokenizer reference details: `CONFIG.md`, `CHECKPOINTING.md`, `technical_spec_bpe_train_tokenizer.md`
+- Tokenizer reference details: `docs/TOKENIZER_BPE.md`, `CONFIG.md`, `CHECKPOINTING.md`
 
 When implementation changes behavior, update both:
 
