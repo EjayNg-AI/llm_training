@@ -39,6 +39,11 @@ When code behavior changes, Codex and contributors must update documentation in 
 At minimum, update the most specific `docs/*` file and `README.md` when user-facing commands or onboarding steps change.
 When a pipeline step changes, update `docs/IMPLEMENTED_STEPS.md` and append an entry to `docs/CHANGELOG.md`.
 
+## Implementation policy (mandatory)
+
+- Repository documentation must be updated after every change or newly implemented feature.
+- Unit tests must be created for each new major code implementation (for example: RLHF framework additions, alternative tokenization processes, transformer architecture implementations, or similar major subsystems).
+
 ## User + Codex guidance
 
 - Users: start with `README.md`, then follow `docs/NEXT_STEPS.md` for priorities.

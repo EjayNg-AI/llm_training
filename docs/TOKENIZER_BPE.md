@@ -172,9 +172,29 @@ Metrics include merge index, best pair count, unique pairs, and affected word ty
 
 Tests:
 
-1. `tests/tokenizer_bpe/test_byte_unicode.py`
-2. `tests/tokenizer_bpe/test_pretokenizer.py`
-3. `tests/tokenizer_bpe/test_stage3_recovery.py`
+1. `tests/tokenizer_bpe/test_config.py`
+2. `tests/tokenizer_bpe/test_byte_unicode.py`
+3. `tests/tokenizer_bpe/test_pretokenizer.py`
+4. `tests/tokenizer_bpe/test_stage1_count_unit.py`
+5. `tests/tokenizer_bpe/test_stage2_init.py`
+6. `tests/tokenizer_bpe/test_stage3_core.py`
+7. `tests/tokenizer_bpe/test_stage3_recovery.py`
+8. `tests/tokenizer_bpe/test_export.py`
+9. `tests/tokenizer_bpe/test_runtime_check.py`
+10. `tests/tokenizer_bpe/test_train_tokenizer_determinism.py`
+11. `tests/tokenizer_bpe/test_train_tokenizer_resume.py`
+
+Fixtures and test utilities:
+
+1. `tests/tokenizer_bpe/conftest.py`
+2. `tests/tokenizer_bpe/helpers.py`
+3. `tests/fixtures/tokenizer_bpe/tiny_corpus.txt`
+4. `tests/fixtures/tokenizer_bpe/sample.jsonl`
+
+Execution commands:
+
+1. `python -m pytest -q tests/tokenizer_bpe`
+2. `python -m pytest -q tests/tokenizer_bpe -m "not integration"`
 
 Supporting docs:
 
@@ -184,6 +204,6 @@ Supporting docs:
 
 ## 10) Known open items
 
-1. Execute and wire tokenizer tests into CI.
-2. Add full end-to-end determinism comparison tests.
-3. Add compatibility checks for downstream training/eval scripts in automated test runs.
+1. Wire tokenizer tests into CI with explicit marker selection (`integration` on merge or nightly).
+2. Add stress/performance tests for larger corpora and higher merge counts.
+3. Add downstream artifact-compatibility checks against `scripts/03_pretrain.py` and `scripts/05_eval_generate.py`.

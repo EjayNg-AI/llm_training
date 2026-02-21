@@ -84,6 +84,23 @@ Runtime commands:
    - `python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml`
 2. Resume:
    - `python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>`
+3. Tokenizer tests:
+   - `python -m pytest -q tests/tokenizer_bpe`
+4. Fast tokenizer unit tests only:
+   - `python -m pytest -q tests/tokenizer_bpe -m "not integration"`
+
+Implemented tokenizer verification coverage:
+
+1. Config validation and deterministic hashing.
+2. Byte-unicode mapping invertibility and round-trip conversion.
+3. Pretokenizer alias/flag behavior and whitespace-preserving segmentation.
+4. Stage 1 input discovery, extraction, pruning, and checkpoint contracts.
+5. Stage 2 deterministic filtering/sorting and base-vocab initialization.
+6. Stage 3 merge helpers, tie-break behavior, WAL parsing, and mismatch guards.
+7. Export ordering/collision contracts and stats output checks.
+8. Runtime encode/decode round-trip checks.
+9. Deterministic full-pipeline export equivalence checks.
+10. Resume/recovery equivalence checks against uninterrupted runs.
 
 Detailed docs:
 
@@ -94,7 +111,7 @@ Detailed docs:
 
 Known limitations:
 
-1. Test suite exists but has not yet been run in this session.
+1. CI wiring for tokenizer markers (`integration`, `recovery`, `determinism`) is not yet configured in this repository.
 2. Model-training stages still need equivalent checkpoint rigor.
 
 ## Step 03: Tiny pretraining (`scripts/03_pretrain.py`)

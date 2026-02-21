@@ -74,3 +74,47 @@ Validation status:
 Documentation updates:
 
 1. Added/updated documents listed above.
+
+### 2026-02-21 (Tokenizer test suite expansion)
+
+Summary:
+
+1. Migrated tokenizer tests to a pytest-based suite and fixed incorrect pretokenizer expectation around leading-space tokenization.
+2. Added module-level tests for config, Stage 1 counting helpers, Stage 2 initialization, Stage 3 core behavior, export contracts, and runtime encode/decode checks.
+3. Added deterministic integration tests for full tokenizer pipeline equivalence and resume/recovery convergence.
+4. Added tokenizer fixture assets and shared test helpers for deterministic corpus/config setup.
+
+Impacted files/modules:
+
+1. `pytest.ini`
+2. `tests/__init__.py`
+3. `tests/tokenizer_bpe/__init__.py`
+4. `tests/tokenizer_bpe/conftest.py`
+5. `tests/tokenizer_bpe/helpers.py`
+6. `tests/tokenizer_bpe/test_byte_unicode.py`
+7. `tests/tokenizer_bpe/test_config.py`
+8. `tests/tokenizer_bpe/test_export.py`
+9. `tests/tokenizer_bpe/test_pretokenizer.py`
+10. `tests/tokenizer_bpe/test_runtime_check.py`
+11. `tests/tokenizer_bpe/test_stage1_count_unit.py`
+12. `tests/tokenizer_bpe/test_stage2_init.py`
+13. `tests/tokenizer_bpe/test_stage3_core.py`
+14. `tests/tokenizer_bpe/test_stage3_recovery.py`
+15. `tests/tokenizer_bpe/test_train_tokenizer_determinism.py`
+16. `tests/tokenizer_bpe/test_train_tokenizer_resume.py`
+17. `tests/fixtures/tokenizer_bpe/tiny_corpus.txt`
+18. `tests/fixtures/tokenizer_bpe/sample.jsonl`
+19. `README.md`
+20. `docs/TOKENIZER_BPE.md`
+21. `docs/IMPLEMENTED_STEPS.md`
+
+Validation status:
+
+1. `python -m compileall tests/tokenizer_bpe tests/fixtures/tokenizer_bpe` succeeded.
+2. `python -m pytest -q tests/tokenizer_bpe` passed (`40 passed`).
+
+Documentation updates:
+
+1. Added tokenizer test execution commands and dependency guidance to `README.md`.
+2. Expanded verification coverage section in `docs/TOKENIZER_BPE.md`.
+3. Updated Step 02 testing details and known limitations in `docs/IMPLEMENTED_STEPS.md`.

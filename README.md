@@ -66,6 +66,26 @@ python scripts/05_eval_generate.py
 python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
 ```
 
+### 5) Run tokenizer tests
+
+Install test dependencies (manual, optional for runtime-only use):
+
+```bash
+python -m pip install pytest pytest-cov
+```
+
+Run the tokenizer suite:
+
+```bash
+python -m pytest -q tests/tokenizer_bpe
+```
+
+Run only fast unit tests (skip integration-marked tests):
+
+```bash
+python -m pytest -q tests/tokenizer_bpe -m "not integration"
+```
+
 Run outputs are written to `artifacts/`.
 
 ## Documentation system
