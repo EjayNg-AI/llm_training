@@ -1,0 +1,4 @@
+interface:
+  display_name: "LaTeX Transcription API"
+  short_description: "Background Responses API flow for LaTeX OCR"
+  default_prompt: "Use $openai-latex-transcription-background to convert PDF pages to PNG images, upload one image per background Responses API request, and collect LaTeX output via polling."

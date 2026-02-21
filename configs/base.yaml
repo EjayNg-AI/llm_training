@@ -1,0 +1,17 @@
+project:
+  name: "llm-pipeline"
+  region_note: "Control plane in ap-southeast-1; training region can differ for capacity."
+
+training:
+  model_name: "gpt2"
+  block_size: 256
+  pretrain:
+    max_steps: 400
+    per_device_train_batch_size: 8
+    gradient_accumulation_steps: 4
+    learning_rate: 3e-4
+  sft_lora:
+    max_steps: 200
+    per_device_train_batch_size: 4
+    gradient_accumulation_steps: 4
+    learning_rate: 2e-4

@@ -1,0 +1,131 @@
+# Bytecode / Python runtime artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+Pipfile.lock
+poetry.lock
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Installer / tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pytype/
+.pyre/
+.hypothesis/
+.tox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+.python-version
+.nox/
+
+# Test and lint outputs
+.cache/
+coverage/
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+
+# Static artifacts / compiled outputs
+*.so
+*.dll
+*.dylib
+
+# Data and binary ML assets
+*.npy
+*.npz
+*.pkl
+*.parquet
+*.h5
+*.hdf5
+*.jsonl
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.pb
+*.tflite
+
+# ML / deep learning experiment artifacts
+data/
+datasets/
+raw_data/
+processed_data/
+checkpoints/
+outputs/
+results/
+logs/
+run/
+runs/
+tensorboard/
+lightning_logs/
+mlruns/
+wandb/
+tb_logs/
+artifacts/
+saved_models/
+models/
+
+# Framework/tool caches
+.huggingface/
+.cache/huggingface/
+.cache/torch/
+.cache/tensorflow/
+.cache/jupyter/
+
+# Project-local config that may contain secrets
+.env
+.env.*
+!.env.example
+!.env.template
+**/.env
+
+# Keep project scaffolding directories and files checked in
+!scripts/
+!scripts/*.py
+!configs/
+!configs/*.yaml
+!configs/*.yml
+!data/
+!data/.gitkeep
+!data/raw/
+!data/raw/.gitkeep
+!data/processed/
+!data/processed/.gitkeep
+!artifacts/
+!artifacts/.gitkeep
+!artifacts/tokenizer/
+!artifacts/tokenizer/.gitkeep
+!artifacts/models/
+!artifacts/models/.gitkeep
+!artifacts/eval/
+!artifacts/eval/.gitkeep
+
+# Editor / OS files
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp

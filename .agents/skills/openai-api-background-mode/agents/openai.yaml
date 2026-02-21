@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenAI Background Mode"
+  short_description: "Run and poll background Responses API jobs"
+  default_prompt: "Use $openai-api-background-mode to run a background Responses API script and set model, reasoning effort, and verbosity before polling status with unbuffered progress output."
