@@ -14,6 +14,65 @@ Format:
 
 ## Unreleased
 
+### 2026-02-22 (Canonical artifact-lineage pipeline implementation)
+
+Summary:
+
+1. Added canonical stage scripts `01..08` for corpus build, dedup, tokenizer training, corpus tokenization, sequence packing, pretraining, SFT, and evaluation.
+2. Introduced shared infrastructure package under `src/llm_training/infra` for hashing, atomic I/O, run metadata/state/metrics, artifact manifests/registry, and resume gates.
+3. Added runtime tokenizer package under `src/llm_training/tokenizer` with `ByteLevelBPETokenizer` API used by downstream stages.
+4. Added new stage configs (`corpus`, `dedup`, `tokenize`, `pack`, `train`, `sft`, `eval`) and artifact registry contract (`artifacts/registry.jsonl` + per-artifact `artifact_manifest.json`).
+5. Added unit/integration tests for infrastructure, tokenizer runtime API, and corpus->dedup->tokenize->pack pipeline flow.
+6. Updated primary documentation set to reflect canonical stage flow and current status.
+
+Impacted files/modules:
+
+1. `src/llm_training/infra/*`
+2. `src/llm_training/tokenizer/*`
+3. `scripts/01_build_corpus.py`
+4. `scripts/02_dedup_exact.py`
+5. `scripts/03_train_tokenizer.py`
+6. `scripts/04_tokenize_corpus.py`
+7. `scripts/05_pack_sequences.py`
+8. `scripts/06_pretrain.py`
+9. `scripts/07_sft_lora.py`
+10. `scripts/08_eval.py`
+11. `scripts/_bootstrap.py`
+12. `scripts/pipeline_common.py`
+13. `configs/corpus.yaml`
+14. `configs/dedup.yaml`
+15. `configs/tokenize.yaml`
+16. `configs/pack.yaml`
+17. `configs/train.yaml`
+18. `configs/sft.yaml`
+19. `configs/eval.yaml`
+20. `tests/conftest.py`
+21. `tests/infra/test_atomic_io.py`
+22. `tests/infra/test_hashing_manifest.py`
+23. `tests/tokenizer_runtime/test_runtime.py`
+24. `tests/pipeline/test_tokenize_pack_pipeline.py`
+25. `README.md`
+26. `docs/PROJECT_STATUS.md`
+27. `docs/NEXT_STEPS.md`
+28. `docs/IMPLEMENTED_STEPS.md`
+29. `docs/TOKENIZER_BPE.md`
+30. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m compileall -q src scripts tests` passed.
+2. `python -m pytest -q tests/infra tests/tokenizer_runtime` passed (`6 passed`).
+3. `python -m pytest -q tests/pipeline/test_tokenize_pack_pipeline.py` passed (`1 passed`).
+4. `python -m pytest -q` passed (`50 passed`).
+
+Documentation updates:
+
+1. Updated canonical pipeline and quick start commands in `README.md`.
+2. Updated stage implementation references in `docs/IMPLEMENTED_STEPS.md`.
+3. Updated status/gaps in `docs/PROJECT_STATUS.md`.
+4. Updated roadmap in `docs/NEXT_STEPS.md`.
+5. Updated tokenizer entrypoint/runtime references in `docs/TOKENIZER_BPE.md`.
+
 ### 2026-02-22 (Zone.Identifier cleanup utility hardening)
 
 Summary:

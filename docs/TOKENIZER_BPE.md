@@ -8,7 +8,7 @@ It is both:
 
 The implementation is in:
 
-- `scripts/02_train_tokenizer.py`
+- `scripts/03_train_tokenizer.py` (canonical stage entrypoint)
 - `scripts/tokenizer_bpe/config.py`
 - `scripts/tokenizer_bpe/pretokenizer.py`
 - `scripts/tokenizer_bpe/stage1_count.py`
@@ -17,7 +17,9 @@ The implementation is in:
 - `scripts/tokenizer_bpe/export.py`
 - `scripts/tokenizer_bpe/byte_unicode.py`
 - `scripts/tokenizer_bpe/io_atomic.py`
-- `scripts/tokenizer_bpe/runtime_check.py`
+- `scripts/tokenizer_bpe/runtime_check.py` (training-time/runtime-check helper functions)
+- `src/llm_training/tokenizer/runtime.py` (`ByteLevelBPETokenizer` runtime API used by downstream stages)
+- `src/llm_training/tokenizer/special.py`
 
 ## 1) Scope and goals
 
@@ -42,20 +44,20 @@ Explicit non-goals:
 Train:
 
 ```bash
-python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml
 ```
 
 Resume:
 
 ```bash
-python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
 ```
 
 Key CLI options:
 
 1. `--run-id` pins a run directory under `run.output_dir`.
 2. `--stop-after-merges` is a debug/recovery test knob.
-3. `--export-dir` controls output tokenizer artifact location.
+3. `--artifact-id` controls the published artifact ID under `artifacts/tokenizer/exports/`.
 
 Run directory structure:
 
@@ -75,6 +77,11 @@ Export directory structure:
 - `tokenizer_config.json`
 - `special_tokens_map.json`
 - `training_stats.json`
+- `artifact_manifest.json`
+
+Published tokenizer exports are now registered in:
+
+- `artifacts/registry.jsonl`
 
 ## 3) Pipeline overview
 
@@ -541,9 +548,23 @@ Also exported:
 2. `training_stats.json`
 3. run-local `export_manifest.json`
 
-## 11) Minimal runtime behavior (losslessness harness)
+## 11) Runtime behavior
 
-Module: `scripts/tokenizer_bpe/runtime_check.py`
+Runtime implementations:
+
+1. `scripts/tokenizer_bpe/runtime_check.py` (minimal helper functions used by tests).
+2. `src/llm_training/tokenizer/runtime.py` (stage runtime class).
+3. `src/llm_training/tokenizer/special.py` (special token ID mapping).
+
+Primary runtime API:
+
+```python
+from llm_training.tokenizer import ByteLevelBPETokenizer
+
+tok = ByteLevelBPETokenizer.from_dir("artifacts/tokenizer/exports/<tokenizer_id>")
+ids = tok.encode("some text")
+text = tok.decode(ids)
+```
 
 Runtime helpers include:
 

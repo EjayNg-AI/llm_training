@@ -1,0 +1,27 @@
+run:
+  output_dir: "artifacts/runs/06_pretrain"
+  log_level: "INFO"
+  structured_logs: true
+
+artifacts_root: "artifacts"
+
+input:
+  packed_id: null
+  tokenizer_id: null
+
+model:
+  n_embd: 384
+  n_layer: 6
+  n_head: 6
+
+training:
+  seed: 0
+  max_steps: 200
+  batch_size: 8
+  learning_rate: 0.0003
+  weight_decay: 0.01
+  warmup_steps: 20
+  eval_every: 50
+  eval_batches: 10
+  save_every: 50
+  artifact_id: null

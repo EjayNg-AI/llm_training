@@ -5,46 +5,56 @@ This status reflects the current scaffold implementation and aligns to the stage
 ## Completed foundation
 
 1. Repository scaffold and stage-oriented scripts are in place.
-2. Local corpus generation path exists (`scripts/01_make_corpus.py`).
-3. Local tokenizer training is implemented with a GPT-2 style UTF-8 byte-level BPE pipeline:
-   - regex-based pretokenization
-   - deterministic merge learning
-   - checkpoint + WAL resume mechanics
-   - export artifacts under `artifacts/tokenizer/gpt2/`
-4. Tiny local pretraining path exists (`scripts/03_pretrain.py`).
-5. LoRA-based instruction tuning path exists (`scripts/04_sft_lora.py`).
-6. Generation smoke evaluation exists (`scripts/05_eval_generate.py`).
-7. Repository cleanup utility exists for `Zone.Identifier` files (`scripts/cleanup_zone_identifier.py`), with virtual environment directory exclusion.
+2. Canonical artifact-lineage pipeline stages are implemented:
+   - `scripts/01_build_corpus.py`
+   - `scripts/02_dedup_exact.py`
+   - `scripts/03_train_tokenizer.py`
+   - `scripts/04_tokenize_corpus.py`
+   - `scripts/05_pack_sequences.py`
+   - `scripts/06_pretrain.py`
+   - `scripts/07_sft_lora.py`
+   - `scripts/08_eval.py`
+3. Shared run/infra package exists under `src/llm_training/infra`:
+   - deterministic config/input hashing
+   - atomic output helpers
+   - run metadata/state/metrics contract
+   - artifact manifest + registry publishing
+   - resume gate helpers
+4. Tokenizer runtime library exists under `src/llm_training/tokenizer` with `ByteLevelBPETokenizer`.
+5. Legacy scaffold scripts remain available for ad-hoc local use.
+6. Repository cleanup utility exists for `Zone.Identifier` files (`scripts/cleanup_zone_identifier.py`), with virtual environment directory exclusion.
 
 ## Current maturity level
 
-This repo is at a practical local/laptop proof stage:
+This repo is now a stronger local/laptop engineering scaffold:
 
-- Good for validating stage boundaries and artifact flow.
-- Good for iteration on tokenizer/training mechanics.
-- Not yet production-grade for compliance, large-scale ETL, distributed training, or serving SLAs.
+- Deterministic stage outputs and lineage are enforced via artifact IDs and manifests.
+- Corpus -> dedup -> tokenization -> packing -> train -> eval stage boundaries are explicit and runnable.
+- Resume/checkpoint rigor has expanded beyond tokenizer training into stage infrastructure and pretraining runner.
+- Still not production-grade for large-scale compliance ETL, distributed cluster orchestration, or serving SLAs.
 
 ## Key gaps versus north star
 
 1. Governance:
-   - Formal model spec, risk register, and promotion gates need to be codified.
+   - Formal model spec, risk register, and promotion gates still need codified policy documents and enforcement hooks.
 2. Data:
-   - Provenance metadata, licensing enforcement, dedup/contamination pipeline, and quality scoring are not fully implemented.
+   - Near-dedup, contamination denylist checks, and richer provenance/license enforcement are still incomplete.
 3. Dataset versioning:
-   - Mixture-as-code and release-grade dataset changelog/versioning are incomplete.
+   - Mixture-as-code and dataset release management are not yet fully implemented.
 4. Training:
-   - Distributed scaling strategy and resilient multi-node orchestration are not implemented.
+   - Distributed multi-node strategy (FSDP/ZeRO/etc.) is not implemented.
 5. Evaluation:
-   - Capability/safety regression harness is minimal and needs formalized suites.
-6. Inference:
+   - Capability/safety regression suites and release thresholds remain minimal.
+6. Inference/deployment:
    - Compression, deployment topology, and production monitoring pipelines are not implemented.
 
 ## What is stable right now
 
-1. Stage naming and script order.
-2. Artifact directory conventions under `artifacts/`.
-3. The principle of deterministic, resumable tokenizer training.
-4. Use of `llm_training_overview.md` as architecture guide and sequencing reference.
+1. Canonical stage naming and sequence (`01..08` scripts).
+2. Artifact directory conventions and append-only registry under `artifacts/`.
+3. Deterministic, resumable tokenizer training behavior.
+4. Shared run metadata/state/metrics and manifest contract for new pipeline stages.
+5. Use of `llm_training_overview.md` as architecture guide and sequencing reference.
 
 ## Detailed implementation references
 

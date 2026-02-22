@@ -1,0 +1,15 @@
+run:
+  output_dir: "artifacts/runs/05_pack_sequences"
+  log_level: "INFO"
+  structured_logs: true
+
+artifacts_root: "artifacts"
+
+input:
+  token_shards_id: null
+
+packing:
+  seq_len: 256
+  split_mod: 10
+  val_remainder: 0
+  artifact_id: null

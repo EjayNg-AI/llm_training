@@ -1,0 +1,12 @@
+run:
+  output_dir: "artifacts/runs/02_dedup_exact"
+  log_level: "INFO"
+  structured_logs: true
+
+artifacts_root: "artifacts"
+
+input:
+  corpus_id: null
+
+artifact:
+  id: null

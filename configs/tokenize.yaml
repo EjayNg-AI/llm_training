@@ -1,0 +1,17 @@
+run:
+  output_dir: "artifacts/runs/04_tokenize_corpus"
+  log_level: "INFO"
+  structured_logs: true
+
+artifacts_root: "artifacts"
+
+input:
+  corpus_id: null
+  tokenizer_id: null
+  corpus_type: "corpus_dedup"
+
+output:
+  docs_per_shard: 10000
+  token_dtype: "uint32"
+  append_eos: true
+  artifact_id: null

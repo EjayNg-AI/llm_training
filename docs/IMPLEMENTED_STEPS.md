@@ -1,197 +1,272 @@
 # Implemented Steps (Detailed)
 
-This document is the implementation-level reference for what is already built in the scaffold pipeline.
+This document is the implementation-level reference for what is built in the canonical scaffold pipeline.
 
-## Step 01: Corpus creation (`scripts/01_make_corpus.py`)
+## Canonical Stage 01: Build corpus (`scripts/01_build_corpus.py`)
 
 Purpose:
 
-1. Produce lightweight local corpus files for reproducible laptop runs.
+1. Convert raw input files into canonical document records with deterministic ordering and IDs.
 
 Current behavior:
 
-1. Attempts to load `wikitext-2-raw-v1` via `datasets`.
-2. Falls back to bundled local sample lines if network/dataset access fails.
-3. Cleans line whitespace and writes split files under `data/raw/`:
-   - `train.txt`
-   - `validation.txt`
-   - `test.txt`
+1. Discovers input files deterministically from configured paths.
+2. Supports text inputs (with optional gzip) and configurable normalization.
+3. Emits canonical docs with schema:
+   - `doc_id`
+   - `text`
+   - `source`
+   - `timestamp`
+   - `meta`
+4. Filters short docs (`data.min_chars`).
+5. Publishes artifact + manifest + registry entry.
 
 Artifacts:
 
-1. `data/raw/train.txt`
-2. `data/raw/validation.txt`
-3. `data/raw/test.txt`
+1. `artifacts/corpora/<corpus_id>/docs.jsonl.gz`
+2. `artifacts/corpora/<corpus_id>/artifact_manifest.json`
+3. `artifacts/registry.jsonl` append entry
 
-Known limitations:
+Run outputs:
 
-1. No provenance metadata manifest emitted yet.
-2. No data policy filtering beyond basic cleanup.
+1. `run_meta.json`
+2. `state.json`
+3. `metrics.jsonl`
+4. `logs/run.log` (+ optional `logs/run.jsonl`)
 
-## Step 02: Tokenizer training (`scripts/02_train_tokenizer.py`)
-
-Purpose:
-
-1. Train and export a deterministic GPT-2 style UTF-8 byte-level BPE tokenizer locally.
-
-Key components:
-
-1. Config and hashing:
-   - `scripts/tokenizer_bpe/config.py`
-2. Regex pretokenizer:
-   - `scripts/tokenizer_bpe/pretokenizer.py`
-3. Byte-unicode mapping:
-   - `scripts/tokenizer_bpe/byte_unicode.py`
-4. Stage 1 counting:
-   - `scripts/tokenizer_bpe/stage1_count.py`
-5. Stage 2 state init:
-   - `scripts/tokenizer_bpe/stage2_init.py`
-6. Stage 3 merge learning:
-   - `scripts/tokenizer_bpe/stage3_train.py`
-7. Export:
-   - `scripts/tokenizer_bpe/export.py`
-
-Detailed behavior:
-
-1. Pretokenization:
-   - uses third-party `regex` module
-   - supports `gpt2_fast` (default), `gpt2_default`, and `custom`
-2. Stage 1 counting:
-   - multiprocessing by line batches
-   - counts UTF-8 piece byte strings
-   - maintains resumable progress file with file offsets
-3. Stage 2 initialization:
-   - builds symbol sequences from byte IDs `0..255`
-   - prepares frequency-weighted word-type inventory
-4. Stage 3 merge loop:
-   - incremental pair statistics
-   - lazy max-heap candidate selection
-   - append-only WAL (`BEGIN`/`COMMIT`)
-   - periodic snapshots with checksum files
-5. Export:
-   - deterministic IDs
-   - `vocab.json`, `merges.txt`, `tokenizer_config.json`, `special_tokens_map.json`, `training_stats.json`
-
-Resumability contract:
-
-1. Resume requires matching `config_hash` and `pattern_hash`.
-2. `BEGIN` without `COMMIT` is ignored during recovery.
-3. Snapshot validity requires readable payload and checksum match.
-
-Runtime commands:
-
-1. Train:
-   - `python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml`
-2. Resume:
-   - `python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>`
-3. Tokenizer tests:
-   - `python -m pytest -q tests/tokenizer_bpe`
-4. Fast tokenizer unit tests only:
-   - `python -m pytest -q tests/tokenizer_bpe -m "not integration"`
-
-Implemented tokenizer verification coverage:
-
-1. Config validation and deterministic hashing.
-2. Byte-unicode mapping invertibility and round-trip conversion.
-3. Pretokenizer alias/flag behavior and whitespace-preserving segmentation.
-4. Stage 1 input discovery, extraction, pruning, and checkpoint contracts.
-5. Stage 2 deterministic filtering/sorting and base-vocab initialization.
-6. Stage 3 merge helpers, tie-break behavior, WAL parsing, and mismatch guards.
-7. Export ordering/collision contracts and stats output checks.
-8. Runtime encode/decode round-trip checks.
-9. Deterministic full-pipeline export equivalence checks.
-10. Resume/recovery equivalence checks against uninterrupted runs.
-
-Detailed docs:
-
-1. `docs/TOKENIZER_BPE.md`
-2. `CONFIG.md`
-3. `CHECKPOINTING.md`
-
-Known limitations:
-
-1. CI wiring for tokenizer markers (`integration`, `recovery`, `determinism`) is not yet configured in this repository.
-2. Model-training stages still need equivalent checkpoint rigor.
-
-## Step 03: Tiny pretraining (`scripts/03_pretrain.py`)
+## Canonical Stage 02: Exact dedup (`scripts/02_dedup_exact.py`)
 
 Purpose:
 
-1. Train a small GPT-2 style causal LM from local text to validate stage interfaces.
+1. Remove exact duplicate documents deterministically before tokenization.
 
 Current behavior:
 
-1. Loads tokenizer from `artifacts/tokenizer/gpt2`.
-2. Loads local corpus via `datasets`.
-3. Tokenizes and groups into fixed block-size sequences.
-4. Trains small GPT-2 config with `Trainer`.
-5. Saves model and tokenizer to `artifacts/models/tiny-gpt2-from-scratch`.
+1. Consumes corpus artifact from registry by ID (or latest).
+2. Dedup key is `sha256(text)`.
+3. Order-independent retention rule keeps lexicographically smallest `doc_id` per dedup key.
+4. Publishes dedup corpus artifact + manifest + registry entry.
 
-Known limitations:
+Artifacts:
 
-1. Production-grade checkpoint/recovery semantics are not yet formalized.
-2. Small-model defaults are for scaffold validation, not quality target attainment.
+1. `artifacts/corpora/<dedup_id>/docs.dedup.jsonl.gz`
+2. `artifacts/corpora/<dedup_id>/artifact_manifest.json`
+3. `artifacts/registry.jsonl` append entry
 
-## Step 04: LoRA SFT (`scripts/04_sft_lora.py`)
-
-Purpose:
-
-1. Demonstrate instruction tuning with lightweight adapters.
-
-Current behavior:
-
-1. Loads base model from pretraining artifact.
-2. Loads Alpaca subset when available, otherwise fallback local examples.
-3. Applies LoRA adapter config and trains with `Trainer`.
-4. Saves adapter and tokenizer in `artifacts/models/tiny-gpt2-sft-lora`.
-
-Known limitations:
-
-1. Instruction dataset governance and quality gates are not yet formalized.
-2. No preference optimization or safety-specific post-training stage yet.
-
-## Step 05: Evaluation smoke test (`scripts/05_eval_generate.py`)
+## Canonical Stage 03: Train tokenizer (`scripts/03_train_tokenizer.py`)
 
 Purpose:
 
-1. Run a basic generation sanity check against latest trained artifact.
+1. Train and export deterministic, resumable GPT-2 style UTF-8 byte-level BPE tokenizer artifacts.
 
 Current behavior:
 
-1. Prefers SFT artifact, falls back to base pretrained artifact.
-2. Generates response from a fixed prompt with stochastic decoding.
+1. Reuses existing tokenizer implementation modules under `scripts/tokenizer_bpe/`:
+   - regex pretokenization
+   - Stage 1 multiprocessing piece counting + progress
+   - Stage 3 WAL + snapshot recovery
+   - deterministic merge/export behavior
+2. Publishes tokenizer artifacts by artifact ID under `artifacts/tokenizer/exports/<tokenizer_id>/`.
+3. Registers tokenizer artifact with manifest and lineage metadata.
 
-Known limitations:
+Artifacts:
 
-1. This is a smoke test only, not a release-grade capability/safety harness.
+1. `vocab.json`
+2. `merges.txt`
+3. `tokenizer_config.json`
+4. `special_tokens_map.json`
+5. `training_stats.json`
+6. `artifact_manifest.json`
 
-## Utility: Zone.Identifier cleanup (`scripts/cleanup_zone_identifier.py`)
+Resume contract:
+
+1. `--resume --run-id <run_id>` reuses existing run directory.
+2. Existing tokenizer WAL/snapshot integrity checks still apply.
+
+## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
 
 Purpose:
 
-1. Remove Windows-origin `Zone.Identifier` sidecar files from the repository tree.
+1. Convert canonical docs to deterministic token shards with per-doc offsets.
 
 Current behavior:
 
-1. Recursively scans from the repository root by default.
-2. Deletes any file whose filename contains `Zone.Identifier`.
-3. Skips Python virtual environment folders by common directory names/prefixes and by detecting `pyvenv.cfg`.
-4. Supports dry-run mode (`--dry-run`) and optional directory exclusions (`--skip-dir`).
+1. Consumes corpus and tokenizer by artifact IDs from registry.
+2. Uses runtime tokenizer API (`ByteLevelBPETokenizer`) from `src/llm_training/tokenizer/runtime.py`.
+3. Supports `uint16`/`uint32` token dtype (default `uint32`).
+4. Uses deterministic shard boundaries (`docs_per_shard`).
+5. Optional EOS append per doc with per-row `eos_appended` indicator.
+6. Supports safe resume via stage state signature and shard-level atomic commit.
 
-Runtime commands:
+Artifacts:
 
-1. Preview deletions:
-   - `python scripts/cleanup_zone_identifier.py --dry-run`
-2. Apply deletions:
-   - `python scripts/cleanup_zone_identifier.py`
+1. `artifacts/tokens/<token_shards_id>/shards/tokens_shard_XXXXX.bin`
+2. `artifacts/tokens/<token_shards_id>/shards/tokens_shard_XXXXX.idx.json`
+3. `artifacts/tokens/<token_shards_id>/index.json`
+4. `artifacts/tokens/<token_shards_id>/artifact_manifest.json`
 
-Validation:
+## Canonical Stage 05: Pack sequences (`scripts/05_pack_sequences.py`)
 
-1. `python -m unittest -q tests.test_cleanup_zone_identifier`
+Purpose:
+
+1. Convert token shards into fixed-length train/val sequence blocks.
+
+Current behavior:
+
+1. Consumes token shard artifact by ID.
+2. Deterministic split assignment via `hash(doc_id) % split_mod`.
+3. Packing strategy v0:
+   - stream tokens per split
+   - truncate to exact multiple of `seq_len`
+   - no overlap (`stride == seq_len`)
+4. Emits packed train/val binary shards and index metadata.
+
+Artifacts:
+
+1. `artifacts/packed/<packed_id>/train/shards/pack_00000.bin`
+2. `artifacts/packed/<packed_id>/val/shards/pack_00000.bin`
+3. `artifacts/packed/<packed_id>/index.json`
+4. `artifacts/packed/<packed_id>/artifact_manifest.json`
+
+## Canonical Stage 06: Pretrain (`scripts/06_pretrain.py`)
+
+Purpose:
+
+1. Run local GPT-style pretraining from packed artifact IDs with explicit checkpointing.
+
+Current behavior:
+
+1. Consumes `packed` and `tokenizer` artifacts by ID.
+2. Builds a small GPT2LMHeadModel from config and trains with a local loop.
+3. Saves checkpoints containing:
+   - model state
+   - optimizer state
+   - scheduler state
+   - RNG states (`python`, `numpy`, `torch`, `cuda` if available)
+   - global step
+4. Supports resume from latest stage checkpoint.
+5. Publishes model artifact and registry entry.
+
+Artifacts:
+
+1. `artifacts/models/<model_id>/...` (HF model files + tokenizer files)
+2. `artifacts/models/<model_id>/artifact_manifest.json`
+3. `artifacts/registry.jsonl` append entry
+
+## Canonical Stage 07: LoRA SFT (`scripts/07_sft_lora.py`)
+
+Purpose:
+
+1. Fine-tune a published base model artifact using LoRA adapters.
+
+Current behavior:
+
+1. Consumes base model artifact by ID.
+2. Uses Alpaca subset when available; falls back to local examples offline.
+3. Trains with `Trainer` and saves SFT artifact by ID.
+4. Publishes model artifact manifest and registry entry.
+
+Artifacts:
+
+1. `artifacts/models/<sft_id>/...`
+2. `artifacts/models/<sft_id>/artifact_manifest.json`
+3. `artifacts/registry.jsonl` append entry
+
+## Canonical Stage 08: Evaluation (`scripts/08_eval.py`)
+
+Purpose:
+
+1. Evaluate model artifacts with perplexity (optional packed dataset) and sample generation.
+
+Current behavior:
+
+1. Consumes `model` artifact by ID and optional `packed` artifact for perplexity.
+2. Generates eval outputs:
+   - `eval.json`
+   - `samples.txt`
+3. Publishes eval artifact + manifest + registry entry.
+
+Artifacts:
+
+1. `artifacts/eval/<eval_id>/eval.json`
+2. `artifacts/eval/<eval_id>/samples.txt`
+3. `artifacts/eval/<eval_id>/artifact_manifest.json`
+4. `artifacts/registry.jsonl` append entry
+
+## Shared infrastructure implementation
+
+Modules under `src/llm_training/infra/`:
+
+1. `run_dir.py`:
+   - run lifecycle metadata (`run_meta.json`)
+   - stage `state.json`
+   - stage `metrics.jsonl`
+2. `hashing.py`:
+   - canonical JSON + stable SHA-256 hashing helpers
+3. `io_atomic.py`:
+   - atomic write/replace for text/json/pickle
+4. `logging.py`:
+   - consistent stage logging format and destinations
+5. `manifest.py`:
+   - artifact manifest schema builder
+   - artifact directory resolution
+   - registry append publishing helpers
+6. `resume.py`:
+   - resume signature compatibility gates
+
+Tokenizer runtime library:
+
+1. `src/llm_training/tokenizer/runtime.py` (`ByteLevelBPETokenizer`)
+2. `src/llm_training/tokenizer/special.py` (special token ID resolution)
+
+## Legacy scaffold scripts (non-canonical)
+
+These scripts remain in-repo for ad-hoc/local compatibility and reference:
+
+1. `scripts/01_make_corpus.py`
+2. `scripts/02_train_tokenizer.py`
+3. `scripts/03_pretrain.py`
+4. `scripts/04_sft_lora.py`
+5. `scripts/05_eval_generate.py`
+
+Use canonical `01..08` scripts for artifact-lineage workflows.
+
+## Runtime commands
+
+Canonical flow:
+
+1. `python scripts/01_build_corpus.py --config configs/corpus.yaml`
+2. `python scripts/02_dedup_exact.py --config configs/dedup.yaml`
+3. `python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml`
+4. `python scripts/04_tokenize_corpus.py --config configs/tokenize.yaml`
+5. `python scripts/05_pack_sequences.py --config configs/pack.yaml`
+6. `python scripts/06_pretrain.py --config configs/train.yaml`
+7. `python scripts/07_sft_lora.py --config configs/sft.yaml`
+8. `python scripts/08_eval.py --config configs/eval.yaml`
+
+Tokenizer resume:
+
+1. `python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>`
+
+Tests:
+
+1. `python -m pytest -q`
+2. `python -m pytest -q tests/tokenizer_bpe`
+3. `python -m pytest -q tests/tokenizer_bpe -m "not integration"`
+
+## Validation coverage added for this stage expansion
+
+1. Infrastructure unit tests:
+   - hashing determinism
+   - atomic JSONL append and atomic dump behavior
+   - manifest publish + registry append behavior
+2. Runtime tokenizer tests:
+   - encode/decode round-trip with exported artifact format
+   - special token ID mapping
+3. Pipeline integration smoke test:
+   - corpus build -> dedup -> tokenize -> pack using artifact registry
 
 ## Traceability matrix
-
-Implemented step documentation pointers:
 
 1. High-level onboarding: `README.md`
 2. Architecture and north-star context: `llm_training_overview.md`

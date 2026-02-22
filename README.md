@@ -1,7 +1,7 @@
 # LLM Training Pipeline
 
 This repository is a practical, versioned scaffold for building an end-to-end LLM training program.
-It is intentionally laptop-runnable today and structured to scale to AWS-based distributed training and inference later.
+It remains laptop-runnable and now includes deterministic artifact-ID based stages from corpus building through evaluation.
 
 ## Project goals
 
@@ -22,16 +22,35 @@ It is intentionally laptop-runnable today and structured to scale to AWS-based d
 - `docs/CHANGELOG.md`: change history and release notes.
 - `AGENTS.md`: operating guide for Codex and human contributors.
 
-## What exists today
+## Canonical pipeline (current)
 
-- `scripts/01_make_corpus.py`: creates local corpus files under `data/raw/`.
-- `scripts/02_train_tokenizer.py`: trains a local GPT-2 style UTF-8 byte-level BPE tokenizer with resume support.
-- `scripts/03_pretrain.py`: tiny GPT-2 style pretraining from local data.
-- `scripts/04_sft_lora.py`: lightweight LoRA instruction tuning.
-- `scripts/05_eval_generate.py`: basic generation smoke test.
-- `scripts/cleanup_zone_identifier.py`: recursively removes files with `Zone.Identifier` in the filename, excluding Python virtual environment folders.
-- `configs/`: shared config files, including `configs/tokenizer_bpe.yaml`.
-- `artifacts/`: tokenizer/model/eval outputs.
+1. `scripts/01_build_corpus.py`: raw text/jsonl -> canonical document corpus artifact.
+2. `scripts/02_dedup_exact.py`: deterministic exact deduplication over corpus docs.
+3. `scripts/03_train_tokenizer.py`: deterministic resumable GPT-2 style byte-level BPE training + published tokenizer artifact.
+4. `scripts/04_tokenize_corpus.py`: corpus docs -> deterministic token shards with per-doc offsets.
+5. `scripts/05_pack_sequences.py`: token shards -> fixed-length train/val packed blocks.
+6. `scripts/06_pretrain.py`: tiny GPT-style pretraining from packed artifacts with checkpoint resume.
+7. `scripts/07_sft_lora.py`: lightweight LoRA SFT over a published base model artifact.
+8. `scripts/08_eval.py`: perplexity/sample evaluation producing versioned eval artifacts.
+
+Shared contracts now applied across new stages:
+
+1. run directory metadata (`run_meta.json`, `state.json`, `metrics.jsonl`)
+2. artifact manifests (`artifact_manifest.json`)
+3. append-only artifact registry (`artifacts/registry.jsonl`)
+4. deterministic stage IDs based on config + inputs (unless overridden)
+
+## Legacy scaffold scripts
+
+The original scaffold scripts still exist and can be used for ad-hoc local experiments:
+
+- `scripts/01_make_corpus.py`
+- `scripts/02_train_tokenizer.py`
+- `scripts/03_pretrain.py`
+- `scripts/04_sft_lora.py`
+- `scripts/05_eval_generate.py`
+
+Use the canonical `01..08` scripts for reproducible artifact-lineage workflows.
 
 ## Quick start (public users)
 
@@ -51,41 +70,54 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-### 3) Run the minimal local pipeline
+### 3) (Optional) Seed tiny local raw text
 
 ```bash
 python scripts/01_make_corpus.py
-python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml
-python scripts/03_pretrain.py
-python scripts/04_sft_lora.py
-python scripts/05_eval_generate.py
 ```
 
-### 4) Resume tokenizer training after interruption (optional)
+This creates `data/raw/{train,validation,test}.txt` and is useful for laptop smoke runs.
+
+### 4) Run the canonical staged pipeline
 
 ```bash
-python scripts/02_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
+python scripts/01_build_corpus.py --config configs/corpus.yaml
+python scripts/02_dedup_exact.py --config configs/dedup.yaml
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml
+python scripts/04_tokenize_corpus.py --config configs/tokenize.yaml
+python scripts/05_pack_sequences.py --config configs/pack.yaml
+python scripts/06_pretrain.py --config configs/train.yaml
+python scripts/07_sft_lora.py --config configs/sft.yaml
+python scripts/08_eval.py --config configs/eval.yaml
 ```
 
-### 5) Run tokenizer tests
+### 5) Resume tokenizer training after interruption (optional)
 
-Test dependencies are included in `requirements.txt`.
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
+```
 
-Run the tokenizer suite:
+### 6) Run tests
+
+Run all tests:
+
+```bash
+python -m pytest -q
+```
+
+Run tokenizer-focused tests only:
 
 ```bash
 python -m pytest -q tests/tokenizer_bpe
 ```
 
-Run only fast unit tests (skip integration-marked tests):
+Run fast tokenizer unit tests only (skip integration-marked tokenizer tests):
 
 ```bash
 python -m pytest -q tests/tokenizer_bpe -m "not integration"
 ```
 
-Run outputs are written to `artifacts/`.
-
-### 6) Remove `Zone.Identifier` files (optional)
+### 7) Remove `Zone.Identifier` files (optional)
 
 ```bash
 python scripts/cleanup_zone_identifier.py --dry-run

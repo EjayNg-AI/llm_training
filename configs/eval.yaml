@@ -1,0 +1,22 @@
+run:
+  output_dir: "artifacts/runs/08_eval"
+  log_level: "INFO"
+  structured_logs: true
+
+artifacts_root: "artifacts"
+
+input:
+  model_id: null
+  packed_id: null
+
+eval:
+  num_eval_batches: 20
+  eval_batch_size: 8
+  max_new_tokens: 120
+  do_sample: false
+  temperature: 0.9
+  top_p: 0.95
+  artifact_id: null
+  prompts:
+    - "### Instruction:\nExplain gradient descent in one paragraph.\n\n### Response:\n"
+    - "### Instruction:\nWhy does deterministic data processing matter in ML pipelines?\n\n### Response:\n"
