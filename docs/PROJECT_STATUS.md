@@ -14,6 +14,7 @@ This status reflects the current scaffold implementation and aligns to the stage
 4. Tiny local pretraining path exists (`scripts/03_pretrain.py`).
 5. LoRA-based instruction tuning path exists (`scripts/04_sft_lora.py`).
 6. Generation smoke evaluation exists (`scripts/05_eval_generate.py`).
+7. Repository cleanup utility exists for `Zone.Identifier` files (`scripts/cleanup_zone_identifier.py`), with virtual environment directory exclusion.
 
 ## Current maturity level
 

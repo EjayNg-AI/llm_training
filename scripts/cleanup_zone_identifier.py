@@ -7,16 +7,45 @@ import argparse
 import os
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SKIP_DIRS = frozenset(
+    {
+        ".venv",
+        "venv",
+        "env",
+        ".env",
+        ".pythonenvs",
+        "virtualenv",
+        ".virtualenv",
+    }
+)
+
+
+def should_skip_directory(parent: Path, dirname: str, skip_dirs: set[str]) -> bool:
+    name = dirname.lower()
+    if name in skip_dirs or name in DEFAULT_SKIP_DIRS:
+        return True
+
+    # Skip common virtual environment naming conventions.
+    if name.startswith(".venv") or name.startswith("venv") or "virtualenv" in name:
+        return True
+
+    return (parent / dirname / "pyvenv.cfg").is_file()
+
 
 def iter_target_files(root: Path, skip_dirs: set[str]) -> list[Path]:
+    skip_dirs = {d.lower() for d in skip_dirs}
     targets: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(root, topdown=True):
-        # Do not descend into known Python environment folders
-        dirnames[:] = [d for d in dirnames if d not in skip_dirs and not d.startswith(".venv")]
+        parent = Path(dirpath)
+        # Do not descend into known Python environment folders.
+        dirnames[:] = [
+            d for d in dirnames if not should_skip_directory(parent=parent, dirname=d, skip_dirs=skip_dirs)
+        ]
 
         for name in filenames:
             if "Zone.Identifier" in name:
-                targets.append(Path(dirpath) / name)
+                targets.append(parent / name)
     return targets
 
 
@@ -26,8 +55,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--root",
-        default=".",
-        help="Directory to scan (default: current directory).",
+        default=str(REPO_ROOT),
+        help="Directory to scan (default: repository root).",
     )
     parser.add_argument(
         "--skip-dir",
@@ -35,7 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         help=(
             "Additional directory names to skip (can be passed multiple times). "
-            "Defaults include .venv, venv, env, ENV, .pythonenvs."
+            "Defaults include .venv, venv, env, .env, .pythonenvs, and virtualenv variants."
         ),
     )
     parser.add_argument(
@@ -50,10 +79,9 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    skip_dirs = {".venv", "venv", "env", "ENV", ".pythonenvs", ".env"}
-    skip_dirs.update(args.skip_dir)
+    skip_dirs = set(args.skip_dir)
 
-    root = Path(args.root).resolve()
+    root = Path(args.root).expanduser().resolve()
     if not root.exists():
         raise SystemExit(f"Root path does not exist: {root}")
 

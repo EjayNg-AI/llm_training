@@ -29,6 +29,7 @@ It is intentionally laptop-runnable today and structured to scale to AWS-based d
 - `scripts/03_pretrain.py`: tiny GPT-2 style pretraining from local data.
 - `scripts/04_sft_lora.py`: lightweight LoRA instruction tuning.
 - `scripts/05_eval_generate.py`: basic generation smoke test.
+- `scripts/cleanup_zone_identifier.py`: recursively removes files with `Zone.Identifier` in the filename, excluding Python virtual environment folders.
 - `configs/`: shared config files, including `configs/tokenizer_bpe.yaml`.
 - `artifacts/`: tokenizer/model/eval outputs.
 
@@ -83,6 +84,15 @@ python -m pytest -q tests/tokenizer_bpe -m "not integration"
 ```
 
 Run outputs are written to `artifacts/`.
+
+### 6) Remove `Zone.Identifier` files (optional)
+
+```bash
+python scripts/cleanup_zone_identifier.py --dry-run
+python scripts/cleanup_zone_identifier.py
+```
+
+By default this scans from the repository root and skips Python virtual environment directories.
 
 ## Documentation system
 

@@ -165,6 +165,30 @@ Known limitations:
 
 1. This is a smoke test only, not a release-grade capability/safety harness.
 
+## Utility: Zone.Identifier cleanup (`scripts/cleanup_zone_identifier.py`)
+
+Purpose:
+
+1. Remove Windows-origin `Zone.Identifier` sidecar files from the repository tree.
+
+Current behavior:
+
+1. Recursively scans from the repository root by default.
+2. Deletes any file whose filename contains `Zone.Identifier`.
+3. Skips Python virtual environment folders by common directory names/prefixes and by detecting `pyvenv.cfg`.
+4. Supports dry-run mode (`--dry-run`) and optional directory exclusions (`--skip-dir`).
+
+Runtime commands:
+
+1. Preview deletions:
+   - `python scripts/cleanup_zone_identifier.py --dry-run`
+2. Apply deletions:
+   - `python scripts/cleanup_zone_identifier.py`
+
+Validation:
+
+1. `python -m unittest -q tests.test_cleanup_zone_identifier`
+
 ## Traceability matrix
 
 Implemented step documentation pointers:

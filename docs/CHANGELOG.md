@@ -14,6 +14,34 @@ Format:
 
 ## Unreleased
 
+### 2026-02-22 (Zone.Identifier cleanup utility hardening)
+
+Summary:
+
+1. Updated `scripts/cleanup_zone_identifier.py` to scan from the repository root by default.
+2. Expanded Python virtual environment folder exclusion with common naming patterns and `pyvenv.cfg` detection.
+3. Added targeted unit tests for Zone.Identifier discovery and virtualenv exclusion behavior.
+
+Impacted files/modules:
+
+1. `scripts/cleanup_zone_identifier.py`
+2. `tests/test_cleanup_zone_identifier.py`
+3. `README.md`
+4. `docs/PROJECT_STATUS.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m unittest -q tests.test_cleanup_zone_identifier` passed (`Ran 3 tests ... OK`).
+2. `python scripts/cleanup_zone_identifier.py --dry-run --root .` succeeded and reported matching files without deleting.
+
+Documentation updates:
+
+1. Added utility usage guidance to `README.md`.
+2. Added implemented behavior details to `docs/IMPLEMENTED_STEPS.md`.
+3. Recorded utility availability in `docs/PROJECT_STATUS.md`.
+
 ### 2026-02-21 (Tokenizer spec consolidation)
 
 Summary:
