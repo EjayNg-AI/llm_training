@@ -1,0 +1,137 @@
+# Repository directory structure
+
+Generated from `git ls-files` on 2026-02-23.
+
+This is the canonical tracked structure of the repository as documented in `AGENTS.md`.
+
+- .agents/
+  - skills/
+    - openai-api-background-mode/
+      - SKILL.md
+      - agents/
+        - openai.yaml
+      - references/
+        - background_mode_notes.md
+      - scripts/
+        - monitor_background_response.py
+        - run_background_response.py
+    - openai-latex-transcription-background/
+      - SKILL.md
+      - agents/
+        - openai.yaml
+      - references/
+        - workflow-template.md
+- .gitignore
+- AGENTS.md
+- CHECKPOINTING.md
+- CONFIG.md
+- README.md
+- artifacts/
+  - .gitkeep
+  - eval/
+    - .gitkeep
+  - models/
+    - .gitkeep
+  - tokenizer/
+    - .gitkeep
+- configs/
+  - base.yaml
+  - corpus.yaml
+  - dedup.yaml
+  - eval.yaml
+  - pack.yaml
+  - sft.yaml
+  - tokenize.yaml
+  - tokenizer_bpe.yaml
+  - train.yaml
+- data/
+  - .gitkeep
+  - processed/
+    - .gitkeep
+  - raw/
+    - .gitkeep
+- docs/
+  - CHANGELOG.md
+  - DEVELOPMENT_WORKFLOW.md
+  - DIRECTORY_STRUCTURE.md
+  - IMPLEMENTED_STEPS.md
+  - NEXT_STEPS.md
+  - PROJECT_STATUS.md
+  - README.md
+  - TOKENIZER_BPE.md
+- llm_training_overview.md
+- pytest.ini
+- requirements.txt
+- scripts/
+  - 01_build_corpus.py
+  - 01_make_corpus.py
+  - 02_dedup_exact.py
+  - 02_train_tokenizer.py
+  - 03_pretrain.py
+  - 03_train_tokenizer.py
+  - 04_sft_lora.py
+  - 04_tokenize_corpus.py
+  - 05_eval_generate.py
+  - 05_pack_sequences.py
+  - 06_pretrain.py
+  - 07_sft_lora.py
+  - 08_eval.py
+  - _bootstrap.py
+  - cleanup_zone_identifier.py
+  - pipeline_common.py
+  - tokenizer_bpe/
+    - __init__.py
+    - byte_unicode.py
+    - config.py
+    - export.py
+    - io_atomic.py
+    - pretokenizer.py
+    - runtime_check.py
+    - stage1_count.py
+    - stage2_init.py
+    - stage3_train.py
+- src/
+  - llm_training/
+    - __init__.py
+    - infra/
+      - __init__.py
+      - hashing.py
+      - io_atomic.py
+      - logging.py
+      - manifest.py
+      - resume.py
+      - run_dir.py
+    - tokenizer/
+      - __init__.py
+      - runtime.py
+      - special.py
+- tests/
+  - __init__.py
+  - conftest.py
+  - fixtures/
+    - tokenizer_bpe/
+      - tiny_corpus.txt
+  - infra/
+    - test_atomic_io.py
+    - test_hashing_manifest.py
+  - pipeline/
+    - test_tokenize_pack_pipeline.py
+  - test_cleanup_zone_identifier.py
+  - tokenizer_bpe/
+    - __init__.py
+    - conftest.py
+    - helpers.py
+    - test_byte_unicode.py
+    - test_config.py
+    - test_export.py
+    - test_pretokenizer.py
+    - test_runtime_check.py
+    - test_stage1_count_unit.py
+    - test_stage2_init.py
+    - test_stage3_core.py
+    - test_stage3_recovery.py
+    - test_train_tokenizer_determinism.py
+    - test_train_tokenizer_resume.py
+  - tokenizer_runtime/
+    - test_runtime.py
+- what_comes_next.md

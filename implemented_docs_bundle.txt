@@ -1,0 +1,1793 @@
+The SWE team has implemented a BPE tokenizer and some other scaffolding.
+
+Analyze the updated repository state based on the detailed information attached below.
+
+Do a careful assessment of what the next concrete engineering steps should be.
+
+Generate a prioritized list of concrete next steps (short-, medium-, and long-horizon), each containing:
+- Specific goal
+- Why it is the next logical step (informed by gaps in docs)
+- Entry conditions (what must be true before starting)
+- Success conditions (how to verify completion)
+- Concrete implementation tasks
+- Risks/tradeoffs
+- Any hard dependencies (files, scripts, configs, docs, tests)
+- Suggested owner type (infrastructure / data / training / evaluation / governance)
+- Estimated verification approach
+
+Keep each recommendation actionable and testable.
+Where requirements are missing or unclear, explicitly flag as "Assumption needed" and list the exact missing input.
+Preserve ordering that aligns with architecture flow and release discipline.
+Identify any gaps where docs and implementation appear misaligned.
+
+Important Points:
+- Do not suggest overly broad rewrites; prefer incremental, low-risk steps that align with the existing architecture.
+- Keep recommendations concrete, measurable, and directly implementable by a software engineering team.
+
+---
+
+The following contains curated documentation for engineering handoff and onboarding.
+
+---
+            Source: docs/README.md
+            Purpose: Index of repository documentation with a file-level map and update policy guidance.
+
+            # Documentation Index
+
+This directory holds implementation-level documentation for the repository.
+`llm_training_overview.md` remains the guiding architecture document for the entire program.
+
+## Document map
+
+- `docs/PROJECT_STATUS.md`
+  - Current implementation status, completed milestones, and known gaps.
+- `docs/DIRECTORY_STRUCTURE.md`
+  - Tracked repository directory structure snapshot.
+- `docs/NEXT_STEPS.md`
+  - Stage-by-stage execution roadmap using the same stage headings as `llm_training_overview.md`.
+- `docs/DEVELOPMENT_WORKFLOW.md`
+  - Coding, testing, and contribution workflow for humans and agents.
+- `docs/IMPLEMENTED_STEPS.md`
+  - Detailed implementation-level documentation for each completed scaffold step.
+- `docs/TOKENIZER_BPE.md`
+  - Deep technical documentation for the local GPT-2 style byte-level BPE tokenizer trainer.
+- `docs/CHANGELOG.md`
+  - Repository change log with summary, impact, validation status, and doc updates.
+
+Related docs outside `docs/`:
+
+- `README.md`: public onboarding and quick start.
+- `AGENTS.md`: operating rules for Codex and repository contributors.
+- `CONFIG.md`: tokenizer config reference.
+- `CHECKPOINTING.md`: tokenizer checkpoint/WAL recovery model.
+
+## Update policy
+
+When code changes:
+
+1. Update the most specific affected document in `docs/`.
+2. Update `README.md` if setup, commands, or onboarding behavior changed.
+3. Update `docs/IMPLEMENTED_STEPS.md` when implemented stage behavior changes.
+4. Append notable changes to `docs/CHANGELOG.md`.
+5. Update `AGENTS.md` only when repository policies or agent/user workflow changed.
+6. Keep `llm_training_overview.md` as the north-star architectural reference unless the program strategy itself changes.
+
+---
+            Source: docs/PROJECT_STATUS.md
+            Purpose: Tracks current implementation completion, stability, and major gaps versus the architecture reference.
+
+            # Project Status
+
+This status reflects the current scaffold implementation and aligns to the staged roadmap in `llm_training_overview.md`.
+
+## Completed foundation
+
+1. Repository scaffold and stage-oriented scripts are in place.
+2. Canonical artifact-lineage pipeline stages are implemented:
+   - `scripts/01_build_corpus.py`
+   - `scripts/02_dedup_exact.py`
+   - `scripts/03_train_tokenizer.py`
+   - `scripts/04_tokenize_corpus.py`
+   - `scripts/05_pack_sequences.py`
+   - `scripts/06_pretrain.py`
+   - `scripts/07_sft_lora.py`
+   - `scripts/08_eval.py`
+3. Shared run/infra package exists under `src/llm_training/infra`:
+   - deterministic config/input hashing
+   - atomic output helpers
+   - run metadata/state/metrics contract
+   - artifact manifest + registry publishing
+   - resume gate helpers
+4. Tokenizer runtime library exists under `src/llm_training/tokenizer` with `ByteLevelBPETokenizer`.
+5. Legacy scaffold scripts remain available for ad-hoc local use.
+6. Repository cleanup utility exists for `Zone.Identifier` files (`scripts/cleanup_zone_identifier.py`), with virtual environment directory exclusion.
+
+## Current maturity level
+
+This repo is now a stronger local/laptop engineering scaffold:
+
+- Deterministic stage outputs and lineage are enforced via artifact IDs and manifests.
+- Corpus -> dedup -> tokenization -> packing -> train -> eval stage boundaries are explicit and runnable.
+- Resume/checkpoint rigor has expanded beyond tokenizer training into stage infrastructure and pretraining runner.
+- Still not production-grade for large-scale compliance ETL, distributed cluster orchestration, or serving SLAs.
+
+## Key gaps versus north star
+
+1. Governance:
+   - Formal model spec, risk register, and promotion gates still need codified policy documents and enforcement hooks.
+2. Data:
+   - Near-dedup, contamination denylist checks, and richer provenance/license enforcement are still incomplete.
+3. Dataset versioning:
+   - Mixture-as-code and dataset release management are not yet fully implemented.
+4. Training:
+   - Distributed multi-node strategy (FSDP/ZeRO/etc.) is not implemented.
+5. Evaluation:
+   - Capability/safety regression suites and release thresholds remain minimal.
+6. Inference/deployment:
+   - Compression, deployment topology, and production monitoring pipelines are not implemented.
+
+## What is stable right now
+
+1. Canonical stage naming and sequence (`01..08` scripts).
+2. Artifact directory conventions and append-only registry under `artifacts/`.
+3. Deterministic, resumable tokenizer training behavior.
+4. Shared run metadata/state/metrics and manifest contract for new pipeline stages.
+5. Use of `llm_training_overview.md` as architecture guide and sequencing reference.
+
+## Detailed implementation references
+
+1. Step-by-step details for implemented pipeline stages: `docs/IMPLEMENTED_STEPS.md`.
+2. Tokenizer implementation internals and contracts: `docs/TOKENIZER_BPE.md`.
+3. Tokenizer config and recovery specifics: `CONFIG.md` and `CHECKPOINTING.md`.
+
+---
+            Source: docs/IMPLEMENTED_STEPS.md
+            Purpose: Provides detailed, stage-by-stage documentation of implemented pipeline steps and artifacts.
+
+            # Implemented Steps (Detailed)
+
+This document is the implementation-level reference for what is built in the canonical scaffold pipeline.
+
+## Canonical Stage 01: Build corpus (`scripts/01_build_corpus.py`)
+
+Purpose:
+
+1. Convert raw input files into canonical document records with deterministic ordering and IDs.
+
+Current behavior:
+
+1. Discovers input files deterministically from configured paths.
+2. Supports text inputs (with optional gzip) and configurable normalization.
+3. Emits canonical docs with schema:
+   - `doc_id`
+   - `text`
+   - `source`
+   - `timestamp`
+   - `meta`
+4. Filters short docs (`data.min_chars`).
+5. Publishes artifact + manifest + registry entry.
+
+Artifacts:
+
+1. `artifacts/corpora/<corpus_id>/docs.jsonl.gz`
+2. `artifacts/corpora/<corpus_id>/artifact_manifest.json`
+3. `artifacts/registry.jsonl` append entry
+
+Run outputs:
+
+1. `run_meta.json`
+2. `state.json`
+3. `metrics.jsonl`
+4. `logs/run.log` (+ optional `logs/run.jsonl`)
+
+## Canonical Stage 02: Exact dedup (`scripts/02_dedup_exact.py`)
+
+Purpose:
+
+1. Remove exact duplicate documents deterministically before tokenization.
+
+Current behavior:
+
+1. Consumes corpus artifact from registry by ID (or latest).
+2. Dedup key is `sha256(text)`.
+3. Order-independent retention rule keeps lexicographically smallest `doc_id` per dedup key.
+4. Publishes dedup corpus artifact + manifest + registry entry.
+
+Artifacts:
+
+1. `artifacts/corpora/<dedup_id>/docs.dedup.jsonl.gz`
+2. `artifacts/corpora/<dedup_id>/artifact_manifest.json`
+3. `artifacts/registry.jsonl` append entry
+
+## Canonical Stage 03: Train tokenizer (`scripts/03_train_tokenizer.py`)
+
+Purpose:
+
+1. Train and export deterministic, resumable GPT-2 style UTF-8 byte-level BPE tokenizer artifacts.
+
+Current behavior:
+
+1. Reuses existing tokenizer implementation modules under `scripts/tokenizer_bpe/`:
+   - regex pretokenization
+   - Stage 1 multiprocessing piece counting + progress
+   - Stage 3 WAL + snapshot recovery
+   - deterministic merge/export behavior
+2. Publishes tokenizer artifacts by artifact ID under `artifacts/tokenizer/exports/<tokenizer_id>/`.
+3. Registers tokenizer artifact with manifest and lineage metadata.
+
+Artifacts:
+
+1. `vocab.json`
+2. `merges.txt`
+3. `tokenizer_config.json`
+4. `special_tokens_map.json`
+5. `training_stats.json`
+6. `artifact_manifest.json`
+
+Resume contract:
+
+1. `--resume --run-id <run_id>` reuses existing run directory.
+2. Existing tokenizer WAL/snapshot integrity checks still apply.
+
+## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
+
+Purpose:
+
+1. Convert canonical docs to deterministic token shards with per-doc offsets.
+
+Current behavior:
+
+1. Consumes corpus and tokenizer by artifact IDs from registry.
+2. Uses runtime tokenizer API (`ByteLevelBPETokenizer`) from `src/llm_training/tokenizer/runtime.py`.
+3. Supports `uint16`/`uint32` token dtype (default `uint32`).
+4. Uses deterministic shard boundaries (`docs_per_shard`).
+5. Optional EOS append per doc with per-row `eos_appended` indicator.
+6. Supports safe resume via stage state signature and shard-level atomic commit.
+
+Artifacts:
+
+1. `artifacts/tokens/<token_shards_id>/shards/tokens_shard_XXXXX.bin`
+2. `artifacts/tokens/<token_shards_id>/shards/tokens_shard_XXXXX.idx.json`
+3. `artifacts/tokens/<token_shards_id>/index.json`
+4. `artifacts/tokens/<token_shards_id>/artifact_manifest.json`
+
+## Canonical Stage 05: Pack sequences (`scripts/05_pack_sequences.py`)
+
+Purpose:
+
+1. Convert token shards into fixed-length train/val sequence blocks.
+
+Current behavior:
+
+1. Consumes token shard artifact by ID.
+2. Deterministic split assignment via `hash(doc_id) % split_mod`.
+3. Packing strategy v0:
+   - stream tokens per split
+   - truncate to exact multiple of `seq_len`
+   - no overlap (`stride == seq_len`)
+4. Emits packed train/val binary shards and index metadata.
+
+Artifacts:
+
+1. `artifacts/packed/<packed_id>/train/shards/pack_00000.bin`
+2. `artifacts/packed/<packed_id>/val/shards/pack_00000.bin`
+3. `artifacts/packed/<packed_id>/index.json`
+4. `artifacts/packed/<packed_id>/artifact_manifest.json`
+
+## Canonical Stage 06: Pretrain (`scripts/06_pretrain.py`)
+
+Purpose:
+
+1. Run local GPT-style pretraining from packed artifact IDs with explicit checkpointing.
+
+Current behavior:
+
+1. Consumes `packed` and `tokenizer` artifacts by ID.
+2. Builds a small GPT2LMHeadModel from config and trains with a local loop.
+3. Saves checkpoints containing:
+   - model state
+   - optimizer state
+   - scheduler state
+   - RNG states (`python`, `numpy`, `torch`, `cuda` if available)
+   - global step
+4. Supports resume from latest stage checkpoint.
+5. Publishes model artifact and registry entry.
+
+Artifacts:
+
+1. `artifacts/models/<model_id>/...` (HF model files + tokenizer files)
+2. `artifacts/models/<model_id>/artifact_manifest.json`
+3. `artifacts/registry.jsonl` append entry
+
+## Canonical Stage 07: LoRA SFT (`scripts/07_sft_lora.py`)
+
+Purpose:
+
+1. Fine-tune a published base model artifact using LoRA adapters.
+
+Current behavior:
+
+1. Consumes base model artifact by ID.
+2. Uses Alpaca subset when available; falls back to local examples offline.
+3. Trains with `Trainer` and saves SFT artifact by ID.
+4. Publishes model artifact manifest and registry entry.
+
+Artifacts:
+
+1. `artifacts/models/<sft_id>/...`
+2. `artifacts/models/<sft_id>/artifact_manifest.json`
+3. `artifacts/registry.jsonl` append entry
+
+## Canonical Stage 08: Evaluation (`scripts/08_eval.py`)
+
+Purpose:
+
+1. Evaluate model artifacts with perplexity (optional packed dataset) and sample generation.
+
+Current behavior:
+
+1. Consumes `model` artifact by ID and optional `packed` artifact for perplexity.
+2. Generates eval outputs:
+   - `eval.json`
+   - `samples.txt`
+3. Publishes eval artifact + manifest + registry entry.
+
+Artifacts:
+
+1. `artifacts/eval/<eval_id>/eval.json`
+2. `artifacts/eval/<eval_id>/samples.txt`
+3. `artifacts/eval/<eval_id>/artifact_manifest.json`
+4. `artifacts/registry.jsonl` append entry
+
+## Shared infrastructure implementation
+
+Modules under `src/llm_training/infra/`:
+
+1. `run_dir.py`:
+   - run lifecycle metadata (`run_meta.json`)
+   - stage `state.json`
+   - stage `metrics.jsonl`
+2. `hashing.py`:
+   - canonical JSON + stable SHA-256 hashing helpers
+3. `io_atomic.py`:
+   - atomic write/replace for text/json/pickle
+4. `logging.py`:
+   - consistent stage logging format and destinations
+5. `manifest.py`:
+   - artifact manifest schema builder
+   - artifact directory resolution
+   - registry append publishing helpers
+6. `resume.py`:
+   - resume signature compatibility gates
+
+Tokenizer runtime library:
+
+1. `src/llm_training/tokenizer/runtime.py` (`ByteLevelBPETokenizer`)
+2. `src/llm_training/tokenizer/special.py` (special token ID resolution)
+
+## Legacy scaffold scripts (non-canonical)
+
+These scripts remain in-repo for ad-hoc/local compatibility and reference:
+
+1. `scripts/01_make_corpus.py`
+2. `scripts/02_train_tokenizer.py`
+3. `scripts/03_pretrain.py`
+4. `scripts/04_sft_lora.py`
+5. `scripts/05_eval_generate.py`
+
+Use canonical `01..08` scripts for artifact-lineage workflows.
+
+## Runtime commands
+
+Canonical flow:
+
+1. `python scripts/01_build_corpus.py --config configs/corpus.yaml`
+2. `python scripts/02_dedup_exact.py --config configs/dedup.yaml`
+3. `python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml`
+4. `python scripts/04_tokenize_corpus.py --config configs/tokenize.yaml`
+5. `python scripts/05_pack_sequences.py --config configs/pack.yaml`
+6. `python scripts/06_pretrain.py --config configs/train.yaml`
+7. `python scripts/07_sft_lora.py --config configs/sft.yaml`
+8. `python scripts/08_eval.py --config configs/eval.yaml`
+
+Tokenizer resume:
+
+1. `python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>`
+
+Tests:
+
+1. `python -m pytest -q`
+2. `python -m pytest -q tests/tokenizer_bpe`
+3. `python -m pytest -q tests/tokenizer_bpe -m "not integration"`
+
+## Validation coverage added for this stage expansion
+
+1. Infrastructure unit tests:
+   - hashing determinism
+   - atomic JSONL append and atomic dump behavior
+   - manifest publish + registry append behavior
+2. Runtime tokenizer tests:
+   - encode/decode round-trip with exported artifact format
+   - special token ID mapping
+3. Pipeline integration smoke test:
+   - corpus build -> dedup -> tokenize -> pack using artifact registry
+
+## Traceability matrix
+
+1. High-level onboarding: `README.md`
+2. Architecture and north-star context: `llm_training_overview.md`
+3. Current state and gaps: `docs/PROJECT_STATUS.md`
+4. Stage roadmap: `docs/NEXT_STEPS.md`
+5. Detailed tokenizer implementation: `docs/TOKENIZER_BPE.md`
+6. Agent and repo operations: `AGENTS.md`
+
+---
+            Source: docs/TOKENIZER_BPE.md
+            Purpose: Serves as the full tokenizer implementation and operations reference.
+
+            # GPT-2 Style UTF-8 Byte-Level BPE Tokenizer
+
+This is the official tokenizer documentation for this repository.
+It is both:
+
+1. the implementation reference for the current codebase, and
+2. the rebuild guide for teams that need to implement the same system from scratch.
+
+The implementation is in:
+
+- `scripts/03_train_tokenizer.py` (canonical stage entrypoint)
+- `scripts/tokenizer_bpe/config.py`
+- `scripts/tokenizer_bpe/pretokenizer.py`
+- `scripts/tokenizer_bpe/stage1_count.py`
+- `scripts/tokenizer_bpe/stage2_init.py`
+- `scripts/tokenizer_bpe/stage3_train.py`
+- `scripts/tokenizer_bpe/export.py`
+- `scripts/tokenizer_bpe/byte_unicode.py`
+- `scripts/tokenizer_bpe/io_atomic.py`
+- `scripts/tokenizer_bpe/runtime_check.py` (training-time/runtime-check helper functions)
+- `src/llm_training/tokenizer/runtime.py` (`ByteLevelBPETokenizer` runtime API used by downstream stages)
+- `src/llm_training/tokenizer/special.py`
+
+## 1) Scope and goals
+
+Goal: train a deterministic, resumable, laptop-runnable GPT-2 style UTF-8 byte-level BPE tokenizer in pure Python.
+
+Required properties:
+
+1. Byte-level and lossless over UTF-8.
+2. GPT-2 style regex pretokenization with leading-space behavior.
+3. Deterministic outputs for fixed corpus + config.
+4. Crash-safe resume semantics.
+5. Operationally practical on CPU laptops.
+
+Explicit non-goals:
+
+1. Exact parity with OpenAI internal token IDs.
+2. GPU-accelerated merge learning.
+3. Multi-language tokenizer runtime in this scaffold phase.
+
+## 2) Entrypoint and run model
+
+Train:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml
+```
+
+Resume:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
+```
+
+Key CLI options:
+
+1. `--run-id` pins a run directory under `run.output_dir`.
+2. `--stop-after-merges` is a debug/recovery test knob.
+3. `--artifact-id` controls the published artifact ID under `artifacts/tokenizer/exports/`.
+
+Run directory structure:
+
+- `checkpoints/word_counts.snapshot.pkl`
+- `checkpoints/word_counts.progress.json`
+- `merges.wal`
+- `snapshots/state.mXXXXXXXX.pkl` (+ `.sha256`)
+- `state.json`
+- `metrics.jsonl`
+- `train.log`
+- `train.jsonl` (if structured logs enabled)
+
+Export directory structure:
+
+- `vocab.json`
+- `merges.txt`
+- `tokenizer_config.json`
+- `special_tokens_map.json`
+- `training_stats.json`
+- `artifact_manifest.json`
+
+Published tokenizer exports are now registered in:
+
+- `artifacts/registry.jsonl`
+
+## 3) Pipeline overview
+
+High-level flow:
+
+1. Stage 1: pretokenize corpus and count piece byte strings in parallel.
+2. Stage 2: convert piece counts to word-type symbol sequences (`0..255`).
+3. Stage 3: iteratively learn BPE merges with WAL + snapshots.
+4. Stage 4: export tokenizer artifacts.
+
+ASCII data flow:
+
+```text
+Raw text/jsonl (+ optional .gz)
+  |
+  v
+Stage 1: regex pretokenize -> Counter[bytes]
+  |
+  v
+Stage 2: words/freqs/id_to_token_bytes init
+  |
+  v
+Stage 3: merge loop + WAL + snapshots
+  |
+  v
+Stage 4: vocab.json + merges.txt + tokenizer_config.json
+```
+
+## 4) Configuration contract
+
+Config source:
+
+- `configs/tokenizer_bpe.yaml`
+- defaults merged from `scripts/tokenizer_bpe/config.py`
+
+Default configuration:
+
+```yaml
+run:
+  output_dir: "artifacts/tokenizer/runs"
+  seed: 0
+  log_level: "INFO"
+  structured_logs: true
+
+data:
+  input_paths:
+    - "data/raw/train.txt"
+  input_format: "text"
+  jsonl_text_field: "text"
+  decode_errors: "replace"
+  normalize: "none"
+  max_bytes: null
+  max_lines: null
+  num_workers: 4
+  batch_lines: 2000
+  min_piece_freq: 2
+  max_unique_pieces: 2000000
+
+pretokenizer:
+  pattern: "gpt2_fast"
+  custom_pattern: null
+  flags: []
+
+bpe:
+  vocab_size: 50000
+  min_merge_freq: 2
+  max_merges: null
+  max_word_types: 1500000
+  max_piece_bytes: 200
+  tie_break: "lexicographic"
+
+special_tokens:
+  tokens:
+    - "<|endoftext|>"
+    - "<|pad|>"
+  placement: "end"
+
+checkpointing:
+  wal_fsync_each_commit: true
+  snapshot_every_merges: 200
+  snapshot_every_seconds: 300
+  keep_last_snapshots: 3
+  stage1_snapshot_every_batches: 50
+```
+
+Validation rules currently enforced:
+
+1. `data.input_format` in `{text, jsonl}`.
+2. `data.decode_errors` in `{strict, replace, ignore}`.
+3. `data.normalize` in `{none, NFC, NFKC}`.
+4. `special_tokens.placement` in `{start, end}`.
+5. `bpe.tie_break` must be `lexicographic`.
+6. `data.num_workers >= 1`, `data.batch_lines >= 1`, `bpe.vocab_size >= 256`.
+
+Determinism hashes:
+
+1. `config_hash` = SHA-256 of canonicalized merged config.
+2. `pattern_hash` = SHA-256 of:
+   - resolved regex string
+   - regex flags
+   - normalization mode
+   - `regex` package version
+
+## 5) Byte-to-unicode mapping
+
+Module: `scripts/tokenizer_bpe/byte_unicode.py`
+
+Purpose: represent arbitrary byte tokens as reversible printable-ish Unicode strings for JSON and text artifacts.
+
+Algorithm (GPT-2 compatible):
+
+```python
+bs = list(range(33, 127)) + list(range(161, 173)) + list(range(174, 256))
+cs = bs[:]
+n = 0
+for b in range(256):
+    if b not in bs:
+        bs.append(b)
+        cs.append(256 + n)
+        n += 1
+```
+
+Contracts:
+
+1. `unicode_to_byte[byte_to_unicode[b]] == b` for all `b in 0..255`.
+2. `token_bytes_to_string` and `token_string_to_bytes` are exact inverses.
+
+## 6) Pretokenization
+
+Module: `scripts/tokenizer_bpe/pretokenizer.py`
+
+Uses third-party `regex` (not `re`) for Unicode classes like `\p{L}` and `\p{N}`.
+
+Pattern aliases:
+
+```python
+PATTERN_ALIASES = {
+    "gpt2_default": r"'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+",
+    "gpt2_fast": r"'(?:[sdmt]|ll|ve|re)| ?\p{L}++| ?\p{N}++| ?[^\s\p{L}\p{N}]++|\s++$|\s+(?!\S)|\s",
+}
+```
+
+`gpt2_fast` is the default in config. `gpt2_default` is kept for canonical GPT-2 pattern compatibility.
+
+Supported flags via config:
+
+1. `IGNORECASE`
+2. `MULTILINE`
+
+Matching API:
+
+```python
+for match in compiled_pattern.finditer(text):
+    yield match.group(0)
+```
+
+Behavioral note: alternatives beginning with ` ?` intentionally preserve leading-space token behavior.
+
+## 7) Stage 1: parallel piece counting
+
+Module: `scripts/tokenizer_bpe/stage1_count.py`
+
+### 7.1 Inputs and file discovery
+
+Supported file extensions:
+
+1. `text`: `.txt`, `.txt.gz`
+2. `jsonl`: `.jsonl`, `.jsonl.gz`
+
+Discovery is deterministic:
+
+1. recurse directories with `sorted(path.rglob("*"))`
+2. convert to resolved absolute paths
+3. deduplicate and sort again
+
+### 7.2 Counting unit
+
+The counted object is the pretokenized piece encoded as bytes:
+
+```python
+piece_bytes = piece.encode("utf-8")
+piece_counts[piece_bytes] += 1
+```
+
+Pieces longer than `bpe.max_piece_bytes` are dropped in workers.
+
+### 7.3 Parallelization model
+
+Stage 1 is where parallelism is applied.
+
+Architecture:
+
+1. Main process reads files in binary mode and tracks byte offsets.
+2. Lines are decoded with configured `decode_errors`.
+3. For JSONL, each line is parsed and `jsonl_text_field` is extracted if it is a string.
+4. Main process submits decoded line batches to `ProcessPoolExecutor`.
+5. Worker processes run `_worker_init` once to compile regex and load normalization config.
+6. Workers return `Counter[bytes]` + local piece count.
+7. Main process merges worker counters.
+
+Worker init:
+
+```python
+def _worker_init(pattern_str, pattern_flags, normalize, max_piece_bytes):
+    _WORKER_PATTERN = compile_pattern(pattern_str, pattern_flags)
+    _WORKER_NORMALIZE = normalize
+    _WORKER_MAX_PIECE_BYTES = max_piece_bytes
+```
+
+Main loop details:
+
+1. Maintains a bounded pending queue of futures (up to `num_workers`).
+2. Each queue item records `end_offset`, line count, and byte count metadata.
+3. File progress updates when a future resolves.
+
+### 7.4 Stage 1 checkpointing and resume
+
+Files:
+
+1. `checkpoints/word_counts.snapshot.pkl`
+2. `checkpoints/word_counts.progress.json`
+
+Progress payload includes:
+
+1. per-file `{path, byte_offset, done}`
+2. `total_lines_processed`
+3. `total_pieces_seen`
+4. `total_bytes_processed`
+5. `config_hash`
+6. `pattern_hash`
+7. `snapshot_id`
+8. `timestamp`
+
+Write semantics use atomic replace via `scripts/tokenizer_bpe/io_atomic.py`:
+
+1. write temp file
+2. flush + fsync temp
+3. `os.replace(tmp, final)`
+4. best-effort directory fsync
+
+Resume gate:
+
+1. Stage 1 checkpoint is accepted only if both `config_hash` and `pattern_hash` match.
+
+### 7.5 Stage 1 pruning and memory control
+
+Pruning logic:
+
+1. Every 100 merged batches (after at least 10,000 lines), prune in-memory counter.
+2. Remove entries below `data.min_piece_freq` if > 1.
+3. Enforce `data.max_unique_pieces` using deterministic top-K:
+   - sort key: frequency descending, bytes lexicographic ascending.
+
+Final Stage 1 output:
+
+1. pruned `Counter[bytes]`
+2. metadata with `training_corpus_sha256` computed from sorted file path + file size + mtime_ns.
+
+## 8) Stage 2: training state initialization
+
+Module: `scripts/tokenizer_bpe/stage2_init.py`
+
+Input: `piece_counts: Counter[bytes]`.
+
+Process:
+
+1. Filter by `data.min_piece_freq`.
+2. Sort by `(-freq, piece_bytes)`.
+3. Cap to `bpe.max_word_types`.
+4. Build:
+   - `words`: `list[list[int]]` where each piece bytestring becomes byte IDs.
+   - `freqs`: frequency list aligned to `words`.
+   - `id_to_token_bytes`: initial `[bytes([0]), ..., bytes([255])]`.
+
+Important: special tokens are not part of merge learning state.
+
+## 9) Stage 3: merge learning with WAL + snapshots
+
+Module: `scripts/tokenizer_bpe/stage3_train.py`
+
+### 9.1 Core state
+
+Main mutable training state:
+
+1. `words: list[list[int]]`
+2. `freqs: list[int]`
+3. `id_to_token_bytes: list[bytes]`
+4. `merge_pairs: list[tuple[int, int]]`
+
+Pair index structures:
+
+1. `pair_count[(a, b)] -> weighted frequency`
+2. `pair_to_words[(a, b)] -> list[word_idx]` (lazy, append-only)
+3. max-heap entries `(-count, a, b)` for deterministic best-pair selection
+
+Weighted pair count definition:
+
+`pair_count[(a, b)] = sum(freq[word_idx] * occurrences_of_pair_in_word)`
+
+### 9.2 Target merge count
+
+If `bpe.max_merges` is set, it is used directly.
+Otherwise:
+
+`target_merges = max(0, bpe.vocab_size - 256 - len(special_tokens))`
+
+### 9.3 Best-pair selection
+
+Lazy heap pop:
+
+```python
+while heap:
+    neg_count, a, b = heapq.heappop(heap)
+    count = -neg_count
+    if pair_count.get((a, b), 0) == count:
+        return a, b, count
+return None
+```
+
+Tie-break behavior is deterministic because heap tuples are ordered as `(-count, a, b)`.
+
+### 9.4 Merge transaction flow
+
+Each merge executes as:
+
+1. Select best pair `(a, b, best_count)`.
+2. Stop if no candidate or `best_count < bpe.min_merge_freq`.
+3. Append WAL `BEGIN`.
+4. Create `new_id = len(id_to_token_bytes)` and append merged bytes.
+5. Update only candidate words from `pair_to_words[(a, b)]`.
+6. Append WAL `COMMIT`.
+7. Periodically write snapshot/state/metrics.
+
+WAL format:
+
+```text
+BEGIN\t<merge_index>\t<a>\t<b>\t<best_count>
+COMMIT\t<merge_index>\t<new_id>
+```
+
+### 9.5 Incremental update algorithm
+
+For each candidate word:
+
+1. skip duplicate/stale word indices via `seen_word_indices`.
+2. verify pair still exists (`contains_pair`).
+3. count local old pairs.
+4. merge all adjacent `a,b` into `new_id`.
+5. count local new pairs.
+6. apply pair deltas weighted by `freqs[word_idx]`.
+7. push updated pair counts to heap.
+8. append word index to `pair_to_words` for all pairs now present.
+
+Core transformation:
+
+```python
+def merge_symbols(symbols, a, b, new_id):
+    merged = []
+    i = 0
+    while i < len(symbols):
+        if i + 1 < len(symbols) and symbols[i] == a and symbols[i + 1] == b:
+            merged.append(new_id)
+            i += 2
+        else:
+            merged.append(symbols[i])
+            i += 1
+    return merged
+```
+
+### 9.6 Snapshotting, metrics, and state files
+
+Periodic trigger:
+
+1. every `checkpointing.snapshot_every_merges`, or
+2. every `checkpointing.snapshot_every_seconds`
+
+Snapshot payload:
+
+1. `words`
+2. `freqs`
+3. `id_to_token_bytes`
+4. `merge_pairs`
+5. `last_merge`
+6. `config_hash`
+7. `pattern_hash`
+
+Snapshot files are checksum-protected (`.sha256`) and old snapshots are pruned to `keep_last_snapshots`.
+
+Additional state output:
+
+1. `state.json` (compact human-readable progress)
+2. `metrics.jsonl` (timestamped structured metrics samples)
+
+### 9.7 Resume algorithm
+
+Resume uses this order:
+
+1. load latest valid snapshot matching `config_hash` and `pattern_hash`.
+2. parse WAL commits (`BEGIN`+`COMMIT` matched by merge index).
+3. replay committed WAL merges beyond snapshot merge index.
+4. rebuild `pair_count`, `pair_to_words`, and heap from replayed `words`.
+
+WAL replay safety checks:
+
+1. ignores in-flight BEGIN records without COMMIT.
+2. enforces `wal_new_id == len(id_to_token_bytes)` at each replayed merge.
+
+Durability model:
+
+1. WAL is append-only.
+2. A merge is durable only after COMMIT line is written.
+3. If `checkpointing.wal_fsync_each_commit` is true, each BEGIN/COMMIT write is fsync'd.
+
+## 10) Export contract
+
+Module: `scripts/tokenizer_bpe/export.py`
+
+### 10.1 Vocab ID policy
+
+Base learned token strings are generated from `id_to_token_bytes` and byte-to-unicode mapping.
+
+ID assignment:
+
+1. if `special_tokens.placement == "start"`:
+   - special tokens first, then base/merged tokens.
+2. else (`end`):
+   - base/merged tokens first, then special tokens.
+
+All collisions are rejected with explicit `ValueError`.
+
+### 10.2 `merges.txt` format
+
+```text
+#version: 0.2
+<tok_a_0> <tok_b_0>
+<tok_a_1> <tok_b_1>
+...
+```
+
+Each merge pair uses the byte-to-unicode token string representation.
+
+### 10.3 `tokenizer_config.json` fields
+
+Current exported fields include:
+
+1. `tokenizer_class`
+2. `add_prefix_space`
+3. `model_max_length`
+4. `pattern_alias`
+5. `pattern`
+6. `pattern_flags`
+7. `pattern_hash`
+8. `byte_to_unicode_version`
+9. `special_tokens`
+10. `vocab_size`
+11. `num_merges`
+12. `training_corpus_sha256`
+13. `config_hash`
+14. `bos_token`, `eos_token`, `unk_token`, `pad_token` (from special token mapping rules)
+
+Also exported:
+
+1. `special_tokens_map.json`
+2. `training_stats.json`
+3. run-local `export_manifest.json`
+
+## 11) Runtime behavior
+
+Runtime implementations:
+
+1. `scripts/tokenizer_bpe/runtime_check.py` (minimal helper functions used by tests).
+2. `src/llm_training/tokenizer/runtime.py` (stage runtime class).
+3. `src/llm_training/tokenizer/special.py` (special token ID mapping).
+
+Primary runtime API:
+
+```python
+from llm_training.tokenizer import ByteLevelBPETokenizer
+
+tok = ByteLevelBPETokenizer.from_dir("artifacts/tokenizer/exports/<tokenizer_id>")
+ids = tok.encode("some text")
+text = tok.decode(ids)
+```
+
+Runtime helpers include:
+
+1. merge rank table construction from `merge_pairs`.
+2. piece-level greedy BPE application by best-rank pair.
+3. decode by concatenating token bytes and UTF-8 decoding.
+
+Core encode loop:
+
+```python
+while len(symbols) > 1:
+    best_rank = None
+    best_pair = None
+    for i in range(len(symbols) - 1):
+        pair = (symbols[i], symbols[i + 1])
+        rank = merge_ranks.get(pair)
+        if rank is None:
+            continue
+        if best_rank is None or rank < best_rank:
+            best_rank = rank
+            best_pair = pair
+    if best_pair is None:
+        break
+    ...
+```
+
+## 12) Determinism and performance characteristics
+
+Determinism levers implemented:
+
+1. deterministic file discovery and sorting.
+2. deterministic counter pruning/top-K tie-break.
+3. deterministic pair selection tie-break (`(-count, a, b)`).
+4. deterministic Stage 2 inventory sorting.
+5. hash-gated checkpoint/snapshot reuse.
+
+Performance strategy:
+
+1. parallelize Stage 1 only (CPU-friendly and low coupling).
+2. keep Stage 3 single-process with incremental data structures.
+3. use lazy invalidation for `pair_to_words` and heap staleness.
+4. expose practical caps:
+   - `max_piece_bytes`
+   - `min_piece_freq`
+   - `max_unique_pieces`
+   - `max_word_types`
+
+## 13) Validation and test coverage
+
+Primary tokenizer tests:
+
+1. `tests/tokenizer_bpe/test_config.py`
+2. `tests/tokenizer_bpe/test_byte_unicode.py`
+3. `tests/tokenizer_bpe/test_pretokenizer.py`
+4. `tests/tokenizer_bpe/test_stage1_count_unit.py`
+5. `tests/tokenizer_bpe/test_stage2_init.py`
+6. `tests/tokenizer_bpe/test_stage3_core.py`
+7. `tests/tokenizer_bpe/test_stage3_recovery.py`
+8. `tests/tokenizer_bpe/test_export.py`
+9. `tests/tokenizer_bpe/test_runtime_check.py`
+10. `tests/tokenizer_bpe/test_train_tokenizer_determinism.py`
+11. `tests/tokenizer_bpe/test_train_tokenizer_resume.py`
+
+Test commands:
+
+```bash
+python -m pytest -q tests/tokenizer_bpe
+python -m pytest -q tests/tokenizer_bpe -m "not integration"
+```
+
+## 14) Rebuild checklist for SWE teams
+
+If you are rebuilding independently, implement in this order:
+
+1. Config loader + canonical hash functions.
+2. Byte-to-unicode reversible mapping.
+3. Regex pretokenizer aliases/flags with `regex` package.
+4. Stage 1 parallel piece counting with resumable progress by file offset.
+5. Stage 2 deterministic word-type inventory initialization.
+6. Stage 3 incremental merge trainer with:
+   - `pair_count`
+   - `pair_to_words`
+   - lazy heap validation
+   - WAL BEGIN/COMMIT
+   - periodic snapshots + checksum
+7. Exporters for vocab/merges/config/stats.
+8. Runtime encode/decode harness and full determinism/resume tests.
+
+If the rebuilt system follows the contracts in this document, teams should produce equivalent algorithmic behavior and recoverability semantics for GPT-2 style byte-level BPE training.
+
+---
+            Source: docs/CHANGELOG.md
+            Purpose: Records chronological change entries with impacted files and validation notes.
+
+            # Changelog
+
+All notable repository changes should be recorded in this file.
+
+Format:
+
+1. Use `YYYY-MM-DD` dates.
+2. Group by release tag or `Unreleased`.
+3. For each entry include:
+   - summary
+   - impacted files/modules
+   - validation status
+   - documentation updates
+
+## Unreleased
+
+### 2026-02-22 (Canonical artifact-lineage pipeline implementation)
+
+Summary:
+
+1. Added canonical stage scripts `01..08` for corpus build, dedup, tokenizer training, corpus tokenization, sequence packing, pretraining, SFT, and evaluation.
+2. Introduced shared infrastructure package under `src/llm_training/infra` for hashing, atomic I/O, run metadata/state/metrics, artifact manifests/registry, and resume gates.
+3. Added runtime tokenizer package under `src/llm_training/tokenizer` with `ByteLevelBPETokenizer` API used by downstream stages.
+4. Added new stage configs (`corpus`, `dedup`, `tokenize`, `pack`, `train`, `sft`, `eval`) and artifact registry contract (`artifacts/registry.jsonl` + per-artifact `artifact_manifest.json`).
+5. Added unit/integration tests for infrastructure, tokenizer runtime API, and corpus->dedup->tokenize->pack pipeline flow.
+6. Updated primary documentation set to reflect canonical stage flow and current status.
+
+Impacted files/modules:
+
+1. `src/llm_training/infra/*`
+2. `src/llm_training/tokenizer/*`
+3. `scripts/01_build_corpus.py`
+4. `scripts/02_dedup_exact.py`
+5. `scripts/03_train_tokenizer.py`
+6. `scripts/04_tokenize_corpus.py`
+7. `scripts/05_pack_sequences.py`
+8. `scripts/06_pretrain.py`
+9. `scripts/07_sft_lora.py`
+10. `scripts/08_eval.py`
+11. `scripts/_bootstrap.py`
+12. `scripts/pipeline_common.py`
+13. `configs/corpus.yaml`
+14. `configs/dedup.yaml`
+15. `configs/tokenize.yaml`
+16. `configs/pack.yaml`
+17. `configs/train.yaml`
+18. `configs/sft.yaml`
+19. `configs/eval.yaml`
+20. `tests/conftest.py`
+21. `tests/infra/test_atomic_io.py`
+22. `tests/infra/test_hashing_manifest.py`
+23. `tests/tokenizer_runtime/test_runtime.py`
+24. `tests/pipeline/test_tokenize_pack_pipeline.py`
+25. `README.md`
+26. `docs/PROJECT_STATUS.md`
+27. `docs/NEXT_STEPS.md`
+28. `docs/IMPLEMENTED_STEPS.md`
+29. `docs/TOKENIZER_BPE.md`
+30. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m compileall -q src scripts tests` passed.
+2. `python -m pytest -q tests/infra tests/tokenizer_runtime` passed (`6 passed`).
+3. `python -m pytest -q tests/pipeline/test_tokenize_pack_pipeline.py` passed (`1 passed`).
+4. `python -m pytest -q` passed (`50 passed`).
+
+Documentation updates:
+
+1. Updated canonical pipeline and quick start commands in `README.md`.
+2. Updated stage implementation references in `docs/IMPLEMENTED_STEPS.md`.
+3. Updated status/gaps in `docs/PROJECT_STATUS.md`.
+4. Updated roadmap in `docs/NEXT_STEPS.md`.
+5. Updated tokenizer entrypoint/runtime references in `docs/TOKENIZER_BPE.md`.
+
+### 2026-02-22 (Zone.Identifier cleanup utility hardening)
+
+Summary:
+
+1. Updated `scripts/cleanup_zone_identifier.py` to scan from the repository root by default.
+2. Expanded Python virtual environment folder exclusion with common naming patterns and `pyvenv.cfg` detection.
+3. Added targeted unit tests for Zone.Identifier discovery and virtualenv exclusion behavior.
+
+Impacted files/modules:
+
+1. `scripts/cleanup_zone_identifier.py`
+2. `tests/test_cleanup_zone_identifier.py`
+3. `README.md`
+4. `docs/PROJECT_STATUS.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m unittest -q tests.test_cleanup_zone_identifier` passed (`Ran 3 tests ... OK`).
+2. `python scripts/cleanup_zone_identifier.py --dry-run --root .` succeeded and reported matching files without deleting.
+
+Documentation updates:
+
+1. Added utility usage guidance to `README.md`.
+2. Added implemented behavior details to `docs/IMPLEMENTED_STEPS.md`.
+3. Recorded utility availability in `docs/PROJECT_STATUS.md`.
+
+### 2026-02-21 (Tokenizer spec consolidation)
+
+Summary:
+
+1. Consolidated tokenizer technical specification content into `docs/TOKENIZER_BPE.md` and expanded it into a full rebuild guide.
+2. Added detailed algorithm and operational coverage for pretokenization regexes, Stage 1 parallel counting, Stage 3 incremental merge updates, WAL recovery, and export/runtime contracts.
+3. Removed `technical_spec_bpe_train_tokenizer.md` so tokenizer documentation now has a single official source.
+
+Impacted files/modules:
+
+1. `docs/TOKENIZER_BPE.md`
+2. `technical_spec_bpe_train_tokenizer.md`
+3. `README.md`
+4. `docs/README.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `AGENTS.md`
+7. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Documentation-only update; runtime tests not executed.
+
+Documentation updates:
+
+1. Replaced the previous tokenizer implementation summary with an implementation-grade official specification in `docs/TOKENIZER_BPE.md`.
+2. Removed legacy technical-spec references from repository documentation.
+
+### 2026-02-21 (Unit test dependency alignment)
+
+Summary:
+
+1. Added explicit unit-test dependencies to `requirements.txt` so pytest-based testing works after the standard project install.
+2. Updated onboarding guidance to reflect that separate manual test dependency installation is no longer required.
+
+Impacted files/modules:
+
+1. `requirements.txt`
+2. `README.md`
+3. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe -m "not integration"` passed (`36 passed, 4 deselected`).
+
+Documentation updates:
+
+1. Updated test setup guidance in `README.md`.
+2. Appended this change entry to `docs/CHANGELOG.md`.
+
+### 2026-02-21
+
+Summary:
+
+1. Replaced tokenizer download script with local GPT-2 style UTF-8 byte-level BPE training pipeline.
+2. Added tokenizer training modules and resumable WAL/snapshot mechanics.
+3. Added documentation system layering and roadmap/status/workflow docs.
+
+Impacted files/modules:
+
+1. `scripts/02_train_tokenizer.py`
+2. `scripts/tokenizer_bpe/*`
+3. `configs/tokenizer_bpe.yaml`
+4. `requirements.txt`
+5. `README.md`
+6. `CONFIG.md`
+7. `CHECKPOINTING.md`
+8. `docs/README.md`
+9. `docs/PROJECT_STATUS.md`
+10. `docs/NEXT_STEPS.md`
+11. `docs/DEVELOPMENT_WORKFLOW.md`
+12. `AGENTS.md`
+13. `tests/tokenizer_bpe/*`
+
+Validation status:
+
+1. Tests not executed in this change set.
+
+Documentation updates:
+
+1. Added and updated docs listed above.
+
+### 2026-02-21 (Documentation hardening pass)
+
+Summary:
+
+1. Aligned `docs/NEXT_STEPS.md` section headings to match `llm_training_overview.md` stage headings.
+2. Added detailed step-level implementation documentation.
+3. Added deep technical tokenizer implementation reference.
+4. Added changelog operating structure for future updates.
+
+Impacted files/modules:
+
+1. `docs/NEXT_STEPS.md`
+2. `docs/IMPLEMENTED_STEPS.md`
+3. `docs/TOKENIZER_BPE.md`
+4. `docs/README.md`
+5. `docs/PROJECT_STATUS.md`
+6. `docs/DEVELOPMENT_WORKFLOW.md`
+7. `README.md`
+8. `AGENTS.md`
+9. `llm_training_overview.md`
+
+Validation status:
+
+1. Documentation changes only; no runtime validation executed.
+
+Documentation updates:
+
+1. Added/updated documents listed above.
+
+### 2026-02-21 (Tokenizer test suite expansion)
+
+Summary:
+
+1. Migrated tokenizer tests to a pytest-based suite and fixed incorrect pretokenizer expectation around leading-space tokenization.
+2. Added module-level tests for config, Stage 1 counting helpers, Stage 2 initialization, Stage 3 core behavior, export contracts, and runtime encode/decode checks.
+3. Added deterministic integration tests for full tokenizer pipeline equivalence and resume/recovery convergence.
+4. Added tokenizer fixture assets and shared test helpers for deterministic corpus/config setup.
+
+Impacted files/modules:
+
+1. `pytest.ini`
+2. `tests/__init__.py`
+3. `tests/tokenizer_bpe/__init__.py`
+4. `tests/tokenizer_bpe/conftest.py`
+5. `tests/tokenizer_bpe/helpers.py`
+6. `tests/tokenizer_bpe/test_byte_unicode.py`
+7. `tests/tokenizer_bpe/test_config.py`
+8. `tests/tokenizer_bpe/test_export.py`
+9. `tests/tokenizer_bpe/test_pretokenizer.py`
+10. `tests/tokenizer_bpe/test_runtime_check.py`
+11. `tests/tokenizer_bpe/test_stage1_count_unit.py`
+12. `tests/tokenizer_bpe/test_stage2_init.py`
+13. `tests/tokenizer_bpe/test_stage3_core.py`
+14. `tests/tokenizer_bpe/test_stage3_recovery.py`
+15. `tests/tokenizer_bpe/test_train_tokenizer_determinism.py`
+16. `tests/tokenizer_bpe/test_train_tokenizer_resume.py`
+17. `tests/fixtures/tokenizer_bpe/tiny_corpus.txt`
+18. `tests/fixtures/tokenizer_bpe/sample.jsonl`
+19. `README.md`
+20. `docs/TOKENIZER_BPE.md`
+21. `docs/IMPLEMENTED_STEPS.md`
+
+Validation status:
+
+1. `python -m compileall tests/tokenizer_bpe tests/fixtures/tokenizer_bpe` succeeded.
+2. `python -m pytest -q tests/tokenizer_bpe` passed (`40 passed`).
+
+Documentation updates:
+
+1. Added tokenizer test execution commands and dependency guidance to `README.md`.
+2. Expanded verification coverage section in `docs/TOKENIZER_BPE.md`.
+3. Updated Step 02 testing details and known limitations in `docs/IMPLEMENTED_STEPS.md`.
+
+---
+            Source: docs/NEXT_STEPS.md
+            Purpose: Defines the roadmap and next implementation priorities aligned to the north-star overview.
+
+            # Next Steps (Aligned to `llm_training_overview.md`)
+
+This roadmap uses the same stage titles as `llm_training_overview.md` so planning and execution stay synchronized.
+
+## 0) Program governance, scope, and guardrails
+
+Current status:
+
+1. Engineering pipeline stages are now artifact-versioned and traceable.
+2. Formal governance policy artifacts are still not codified.
+
+Next actions:
+
+1. Add `docs/GOVERNANCE_MODEL_SPEC.md` with domain scope, refusal boundaries, and tool-use constraints.
+2. Add `docs/DATA_POLICY.md` with licensing, PII handling, and retention expectations.
+3. Add `docs/RELEASE_GATES.md` to define promotion criteria tied to eval outputs.
+
+Definition of done:
+
+1. Model promotion and dataset usage are controlled by documented policy gates.
+
+## 1) Data acquisition + provenance capture
+
+Current status:
+
+1. `01_build_corpus.py` produces canonical document artifacts and manifests.
+2. Raw-source policy metadata (`license`, `crawl_date`, quality tags) remains sparse.
+
+Next actions:
+
+1. Expand corpus schema population for source/license provenance fields.
+2. Add provenance validators in corpus build stage.
+3. Record raw-source acquisition manifests for each dataset release.
+
+Definition of done:
+
+1. Every training document has machine-readable provenance fields and validation checks.
+
+## 2) Data cleaning, normalization, and aggressive filtering
+
+Current status:
+
+1. Baseline normalization and short-doc filters exist.
+2. Policy-grade cleaning/filtering (PII/toxicity/quality scoring) is not yet implemented.
+
+Next actions:
+
+1. Add dedicated cleaning/filter stage with configurable filters.
+2. Add PII/toxicity tagging hooks.
+3. Add quality score output to corpus manifests.
+
+Definition of done:
+
+1. Cleaned dataset outputs are reproducible and policy-checkable from raw inputs.
+
+## 3) Deduplication (exact + near-duplicate) and contamination control
+
+Current status:
+
+1. Exact dedup v0 is implemented in `02_dedup_exact.py`.
+2. Near-dedup and contamination denylist checks are not implemented.
+
+Next actions:
+
+1. Add near-dedup stage (MinHash/SimHash style clustering).
+2. Add contamination checks against benchmark denylist sets.
+3. Emit per-release dedup/contamination reports.
+
+Definition of done:
+
+1. Exact+near dedup and contamination controls are run and versioned for each corpus release.
+
+## 4) Dataset versioning + mixture as code
+
+Current status:
+
+1. Artifact manifests and registry now provide dataset lineage primitives.
+2. Mixture-as-code policies and dataset release semantics are still incomplete.
+
+Next actions:
+
+1. Add dataset release schema (`dataset_id`, source versions, cleaning config, tokenizer id).
+2. Add mixture configs under `configs/dataset_mixtures/`.
+3. Add changelog policy for dataset mixture updates.
+
+Definition of done:
+
+1. Dataset releases are reproducible from config + manifests + registry lineage.
+
+## 5) Sharding and streaming-ready data formats
+
+Current status:
+
+1. Tokenization and packing now emit deterministic binary shards with index files.
+2. Streaming dataloader and shard-performance validation are not implemented.
+
+Next actions:
+
+1. Add streaming dataloader abstraction for packed shards.
+2. Add shard read/throughput validation scripts.
+3. Document binary schema and compatibility policy.
+
+Definition of done:
+
+1. Training can stream shard artifacts without full in-memory loading.
+
+## 6) Tokenizer design + training (one-way door)
+
+Current status:
+
+1. Deterministic resumable tokenizer trainer is implemented and now published as artifact IDs.
+2. Runtime tokenizer class exists for downstream stage consumption.
+
+Next actions:
+
+1. Add compatibility tests across tokenizer runtime and training exports.
+2. Freeze tokenizer versioning policy for future model families.
+3. Add explicit tokenizer deprecation/migration protocol.
+
+Definition of done:
+
+1. Tokenizer training/runtime/export contracts are CI-enforced and version-governed.
+
+## 7) Architecture and scaling plan
+
+Current status:
+
+1. Tiny GPT-style local pretraining is integrated into artifact-based flow.
+2. Formal parameter/context/token-budget scaling targets are not codified.
+
+Next actions:
+
+1. Add scaling target schema by model size.
+2. Add experiment templates for token budget and compute budget tracking.
+
+Definition of done:
+
+1. Every model run specifies planned scaling targets and budgets.
+
+## 8) Distributed training systems and cluster orchestration
+
+Current status:
+
+1. Local single-node runner with checkpoint/resume is implemented.
+2. Distributed launcher/orchestration is not implemented.
+
+Next actions:
+
+1. Abstract launch interface for local vs distributed execution.
+2. Prototype FSDP/ZeRO-oriented distributed config.
+3. Add distributed recovery drills.
+
+Definition of done:
+
+1. At least one reproducible multi-node training workflow is documented and runnable.
+
+## 9) Region strategy when operating from Singapore
+
+Current status:
+
+1. Region strategy remains conceptual in `llm_training_overview.md`.
+2. No executable region/capacity runbook is in repo docs.
+
+Next actions:
+
+1. Add `docs/CLOUD_REGION_STRATEGY.md`.
+2. Document cross-region replication/cost/capacity decisions.
+
+Definition of done:
+
+1. Region and capacity choices are captured as operating policy.
+
+## 10) Training job mechanics: checkpoints, resumes, and fault tolerance
+
+Current status:
+
+1. Checkpoint/resume rigor now exists for tokenizer and local pretraining runner.
+2. SFT/eval and future distributed runs need equivalent recovery hardening.
+
+Next actions:
+
+1. Add explicit checkpoint schema docs for model runs.
+2. Add forced interruption tests for pretrain and SFT.
+3. Add checkpoint retention and durability policy.
+
+Definition of done:
+
+1. Long-running training stages recover from interruption with controlled drift.
+
+## 11) Evaluation harness: quality, capability, and safety as continuous signals
+
+Current status:
+
+1. Eval stage v0 now emits versioned eval artifacts (`eval.json`, `samples.txt`, metrics).
+2. Capability/safety benchmark suites and release gates are still minimal.
+
+Next actions:
+
+1. Add benchmark suite runner for capability + safety probes.
+2. Add pass/fail thresholds tied to release gating docs.
+3. Add regression diff tooling across eval artifact IDs.
+
+Definition of done:
+
+1. Eval gates are part of default promotion workflow.
+
+## 12) Post-training pipeline (the real product phase)
+
+Current status:
+
+1. LoRA SFT stage is now integrated with artifact lineage and stage run contracts.
+2. Preference optimization and safety-specific post-training remain unimplemented.
+
+Next actions:
+
+1. Add structured instruction dataset governance.
+2. Add DPO/RLAIF-ready interfaces and training scripts.
+3. Add safety tuning templates and eval coupling.
+
+Definition of done:
+
+1. Post-training variants are reproducible and policy-evaluable.
+
+## 13) Compression and inference optimization
+
+Current status:
+
+1. Not implemented.
+
+Next actions:
+
+1. Add quantization/export scripts.
+2. Add latency/throughput/cost benchmark reporting as versioned artifacts.
+
+Definition of done:
+
+1. At least one compressed serving artifact has reproducible benchmark evidence.
+
+## 14) Deployment, monitoring, and the data flywheel
+
+Current status:
+
+1. Not implemented.
+
+Next actions:
+
+1. Define serving deployment architecture and telemetry schema.
+2. Add feedback-to-retraining ingestion loop design.
+
+Definition of done:
+
+1. Closed-loop process exists from production signals to dataset/model updates.
+
+---
+            Source: docs/DEVELOPMENT_WORKFLOW.md
+            Purpose: Defines coding, testing, and documentation expectations for contributors and Codex.
+
+            # Development Workflow
+
+This workflow applies to both human contributors and Codex working in this repository.
+
+## Working principles
+
+1. Preserve deterministic behavior where possible.
+2. Prefer small, stage-scoped changes over large rewrites.
+3. Keep interfaces stable between local and cloud-intended paths.
+4. Treat `llm_training_overview.md` as architecture guidance and sequencing truth.
+
+## Coding expectations
+
+1. Keep scripts runnable from repository root.
+2. Use UTF-8 text files and concise logs.
+3. Avoid committing generated artifacts and environment directories.
+4. Keep configuration in `configs/` and avoid hidden constants in scripts.
+
+## Testing expectations
+
+1. Add or update tests when behavior changes.
+2. Prefer deterministic tests with fixed seeds and fixed fixtures.
+3. Validate stage-level behavior before integrating cross-stage changes.
+4. For tokenizer changes, include:
+   - determinism checks
+   - resume/recovery checks
+   - artifact compatibility checks
+
+## Documentation expectations
+
+When a change lands:
+
+1. Update detailed docs in `docs/` for behavior/roadmap impact.
+2. Update `README.md` when onboarding, setup, or script usage changes.
+3. Update `docs/IMPLEMENTED_STEPS.md` when any implemented step behavior changes.
+4. Append an entry to `docs/CHANGELOG.md` for notable changes.
+5. Update `AGENTS.md` if contributor/agent policy changes.
+6. Ensure links remain valid and docs are consistent with current scripts/configs.
+
+## Pull request checklist
+
+1. What changed and why.
+2. How to run and verify.
+3. Risks, edge cases, and rollback approach.
+4. Docs updated (`README.md`, `docs/*`, `AGENTS.md` as applicable).
+
+---
+            Source: docs/DIRECTORY_STRUCTURE.md
+            Purpose: Captures the tracked repository directory layout to onboard engineers to current file structure quickly.
+
+            # Repository directory structure
+
+Generated from `git ls-files` on 2026-02-23.
+
+This is the canonical tracked structure of the repository as documented in `AGENTS.md`.
+
+- .agents/
+  - skills/
+    - openai-api-background-mode/
+      - SKILL.md
+      - agents/
+        - openai.yaml
+      - references/
+        - background_mode_notes.md
+      - scripts/
+        - monitor_background_response.py
+        - run_background_response.py
+    - openai-latex-transcription-background/
+      - SKILL.md
+      - agents/
+        - openai.yaml
+      - references/
+        - workflow-template.md
+- .gitignore
+- AGENTS.md
+- CHECKPOINTING.md
+- CONFIG.md
+- README.md
+- artifacts/
+  - .gitkeep
+  - eval/
+    - .gitkeep
+  - models/
+    - .gitkeep
+  - tokenizer/
+    - .gitkeep
+- configs/
+  - base.yaml
+  - corpus.yaml
+  - dedup.yaml
+  - eval.yaml
+  - pack.yaml
+  - sft.yaml
+  - tokenize.yaml
+  - tokenizer_bpe.yaml
+  - train.yaml
+- data/
+  - .gitkeep
+  - processed/
+    - .gitkeep
+  - raw/
+    - .gitkeep
+- docs/
+  - CHANGELOG.md
+  - DEVELOPMENT_WORKFLOW.md
+  - DIRECTORY_STRUCTURE.md
+  - IMPLEMENTED_STEPS.md
+  - NEXT_STEPS.md
+  - PROJECT_STATUS.md
+  - README.md
+  - TOKENIZER_BPE.md
+- llm_training_overview.md
+- pytest.ini
+- requirements.txt
+- scripts/
+  - 01_build_corpus.py
+  - 01_make_corpus.py
+  - 02_dedup_exact.py
+  - 02_train_tokenizer.py
+  - 03_pretrain.py
+  - 03_train_tokenizer.py
+  - 04_sft_lora.py
+  - 04_tokenize_corpus.py
+  - 05_eval_generate.py
+  - 05_pack_sequences.py
+  - 06_pretrain.py
+  - 07_sft_lora.py
+  - 08_eval.py
+  - _bootstrap.py
+  - cleanup_zone_identifier.py
+  - pipeline_common.py
+  - tokenizer_bpe/
+    - __init__.py
+    - byte_unicode.py
+    - config.py
+    - export.py
+    - io_atomic.py
+    - pretokenizer.py
+    - runtime_check.py
+    - stage1_count.py
+    - stage2_init.py
+    - stage3_train.py
+- src/
+  - llm_training/
+    - __init__.py
+    - infra/
+      - __init__.py
+      - hashing.py
+      - io_atomic.py
+      - logging.py
+      - manifest.py
+      - resume.py
+      - run_dir.py
+    - tokenizer/
+      - __init__.py
+      - runtime.py
+      - special.py
+- tests/
+  - __init__.py
+  - conftest.py
+  - fixtures/
+    - tokenizer_bpe/
+      - tiny_corpus.txt
+  - infra/
+    - test_atomic_io.py
+    - test_hashing_manifest.py
+  - pipeline/
+    - test_tokenize_pack_pipeline.py
+  - test_cleanup_zone_identifier.py
+  - tokenizer_bpe/
+    - __init__.py
+    - conftest.py
+    - helpers.py
+    - test_byte_unicode.py
+    - test_config.py
+    - test_export.py
+    - test_pretokenizer.py
+    - test_runtime_check.py
+    - test_stage1_count_unit.py
+    - test_stage2_init.py
+    - test_stage3_core.py
+    - test_stage3_recovery.py
+    - test_train_tokenizer_determinism.py
+    - test_train_tokenizer_resume.py
+  - tokenizer_runtime/
+    - test_runtime.py
+- what_comes_next.md

@@ -7,6 +7,8 @@ This directory holds implementation-level documentation for the repository.
 
 - `docs/PROJECT_STATUS.md`
   - Current implementation status, completed milestones, and known gaps.
+- `docs/DIRECTORY_STRUCTURE.md`
+  - Tracked repository directory structure snapshot.
 - `docs/NEXT_STEPS.md`
   - Stage-by-stage execution roadmap using the same stage headings as `llm_training_overview.md`.
 - `docs/DEVELOPMENT_WORKFLOW.md`

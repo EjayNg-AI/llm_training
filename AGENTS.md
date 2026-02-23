@@ -22,6 +22,8 @@ Documentation is intentionally layered. Use the right document for the right pur
   - Treat this as the north-star sequencing and design reference.
 - `docs/PROJECT_STATUS.md`
   - Current implementation status and known gaps.
+- `docs/DIRECTORY_STRUCTURE.md`
+  - Canonical repository directory structure snapshot (tracked files only).
 - `docs/NEXT_STEPS.md`
   - Prioritized roadmap from current scaffold to cloud-scale system.
 - `docs/DEVELOPMENT_WORKFLOW.md`
@@ -42,6 +44,9 @@ When a pipeline step changes, update `docs/IMPLEMENTED_STEPS.md` and append an e
 ## Implementation policy (mandatory)
 
 - Repository documentation must be updated after every change or newly implemented feature.
+- `docs/DIRECTORY_STRUCTURE.md` must be updated whenever tracked directory structure changes, including:
+  - adding, renaming, or removing tracked directories
+  - adding, renaming, or removing tracked files
 - Unit tests must be created for each new major code implementation (for example: RLHF framework additions, alternative tokenization processes, transformer architecture implementations, or similar major subsystems).
 
 ## User + Codex guidance
