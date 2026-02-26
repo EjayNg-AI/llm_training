@@ -63,8 +63,10 @@ Current behavior:
 
 1. Reuses existing tokenizer implementation modules under `scripts/tokenizer_bpe/`:
    - regex pretokenization
-   - Stage 1 multiprocessing piece counting + progress
-   - Stage 3 WAL + snapshot recovery
+   - Stage 1 multiprocessing piece counting with out-of-order worker completion and deterministic in-order merge application
+   - Stage 2/3 compact integer-array state (`array('H'/'I')` words + array-backed freqs)
+   - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`), heap pressure controls, and WAL + snapshot recovery
+   - Stage 3 PoC durability defaults (periodic fsync with paranoid per-commit option)
    - deterministic merge/export behavior
 2. Publishes tokenizer artifacts by artifact ID under `artifacts/tokenizer/exports/<tokenizer_id>/`.
 3. Registers tokenizer artifact with manifest and lineage metadata.

@@ -21,6 +21,114 @@ The implementation is in:
 - `src/llm_training/tokenizer/runtime.py` (`ByteLevelBPETokenizer` runtime API used by downstream stages)
 - `src/llm_training/tokenizer/special.py`
 
+## Core Training Algorithm (Educational Walkthrough)
+
+This section is the shortest path to understanding what must be implemented to reproduce this tokenizer.
+
+At a high level, training is:
+
+1. Split text into regex pieces and count piece byte strings.
+2. Initialize BPE state from those counts using byte IDs (`0..255`) as the base symbols.
+3. Repeatedly merge the highest-frequency adjacent symbol pair.
+4. Export vocab/merge artifacts and append special tokens at export time.
+
+### 1) Vocabulary initialization + pretokenization
+
+Training is byte-level. The base vocabulary is always the 256 single-byte tokens:
+
+```python
+id_to_token_bytes = [bytes([b]) for b in range(256)]
+```
+
+Stage 1 reads corpus lines, optionally normalizes per line, applies GPT-2 style regex pretokenization, and counts UTF-8 piece bytes:
+
+```python
+if normalize_mode != "none":
+    line = unicodedata.normalize(normalize_mode, line)
+for match in compiled_pattern.finditer(line):
+    piece = match.group(0)
+    piece_counts[piece.encode("utf-8")] += 1
+```
+
+For independent implementations, this is a key contract:
+
+1. Counted unit is piece UTF-8 bytes (not Unicode codepoints).
+2. Regex matching and normalization order must match training exactly.
+3. Deterministic Stage 1 progress/resume behavior depends on applying completed worker results in contiguous `batch_id` order.
+
+### 2) Build initial BPE training state
+
+After Stage 1 capping, Stage 2 builds word types and frequencies:
+
+```python
+# pseudo-shape
+inventory = sorted(piece_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+words = [array(word_storage_type, list(piece_bytes)) for piece_bytes, _ in inventory]
+freqs = array("Q", (freq for _, freq in inventory))
+```
+
+Interpretation:
+
+1. Each unique pretokenized piece becomes one word type (`words[idx]`).
+2. `freqs[idx]` is how often that piece appeared in the corpus.
+3. Merge learning operates over these weighted word types, not raw document text.
+
+### 3) How BPE merges are computed
+
+Core counting uses weighted adjacent pairs:
+
+```python
+pair_id = (a << 32) | b
+pair_count[pair_id] += freqs[word_idx] * occurrences_of_pair_in_word
+```
+
+Best-pair selection is deterministic with heap tuples `(-count, pair_id)`:
+
+```python
+neg_count, pair_id = heapq.heappop(heap)
+# max frequency first; ties resolved lexicographically by (a, b) encoded in pair_id
+```
+
+Merge application loop (conceptually):
+
+```python
+new_id = len(id_to_token_bytes)
+id_to_token_bytes.append(id_to_token_bytes[a] + id_to_token_bytes[b])
+pair_id = (a << 32) | b
+for word_idx in pair_to_words[pair_id]:
+    old_pairs = count_adjacent_pairs(words[word_idx])
+    words[word_idx] = merge_symbols(words[word_idx], a, b, new_id, word_storage_type)
+    new_pairs = count_adjacent_pairs(words[word_idx])
+    apply_weighted_deltas(old_pairs, new_pairs, freqs[word_idx])
+```
+
+Implementation notes for SWE teams:
+
+1. Pair counts are maintained incrementally (not fully recomputed each merge).
+2. `pair_to_words` is lazy append-heavy with duplicate/stale filtering; merged-pair lists are deleted after each merge.
+3. Trainer stops when no valid pair remains, `best_count < min_merge_freq`, or merge target is reached.
+
+### 4) Special tokens
+
+Special tokens are intentionally excluded from merge learning state. They are added only during export:
+
+1. `placement = "start"`: specials get lowest IDs, learned tokens are shifted.
+2. `placement = "end"`: learned tokens keep IDs, specials are appended.
+
+Any collision between special-token strings and learned token strings is a hard error.
+
+### 5) Final output artifacts
+
+Training/export produces:
+
+1. `vocab.json`: token string -> token ID.
+2. `merges.txt`: merge order (`#version: 0.2` + token-string pairs).
+3. `tokenizer_config.json`: regex pattern/flags, hashes, and tokenizer metadata.
+4. `special_tokens_map.json`: BOS/EOS/UNK/PAD mapping.
+5. `training_stats.json`: merge count, corpus/config hashes, and run metadata.
+
+For exact reproducibility, implementers should treat merge order (`merges.txt`) and ID assignment (`vocab.json` + special placement) as the canonical tokenizer function.
+
 ## 1) Scope and goals
 
 Goal: train a deterministic, resumable, laptop-runnable GPT-2 style UTF-8 byte-level BPE tokenizer in pure Python.
@@ -160,7 +268,8 @@ special_tokens:
   placement: "end"
 
 checkpointing:
-  wal_fsync_each_commit: true
+  wal_fsync_each_commit: false
+  wal_fsync_every_commits: 50
   snapshot_every_merges: 200
   snapshot_every_seconds: 300
   keep_last_snapshots: 3
@@ -175,6 +284,7 @@ Validation rules currently enforced:
 4. `special_tokens.placement` in `{start, end}`.
 5. `bpe.tie_break` must be `lexicographic`.
 6. `data.num_workers >= 1`, `data.batch_lines >= 1`, `bpe.vocab_size >= 256`.
+7. `checkpointing.wal_fsync_every_commits >= 0`.
 
 Determinism hashes:
 
@@ -184,6 +294,26 @@ Determinism hashes:
    - regex flags
    - normalization mode
    - `regex` package version
+
+`config_hash` canonicalization contract (normative):
+
+1. Start from the merged config (defaults deep-merged with user config).
+2. Do not include runtime-added `meta` keys in the hashed payload.
+3. Serialize with `json.dumps(cfg, sort_keys=True, separators=(",", ":"), ensure_ascii=False)`.
+4. Encode JSON as UTF-8 and hash with SHA-256.
+5. Preserve list order as provided; do not reorder arrays.
+
+Normative hash example:
+
+```json
+{"a":1,"b":["x",2],"c":{"k":"v","n":null}}
+```
+
+SHA-256:
+
+```text
+8e0238f8ecb010dd664f0e02608ee89bbe9429d4ce197b034f64c451a80d04b7
+```
 
 ## 5) Byte-to-unicode mapping
 
@@ -240,6 +370,24 @@ for match in compiled_pattern.finditer(text):
 
 Behavioral note: alternatives beginning with ` ?` intentionally preserve leading-space token behavior.
 
+### 6.1 Normalization contract
+
+Normalization is configured by `data.normalize` and is applied only in Stage 1 workers.
+
+Normative order for each training input line:
+
+1. Main process decodes bytes to text (`decode_errors` policy).
+2. For `jsonl`, main process parses JSON and extracts `jsonl_text_field` if it is a string.
+3. Worker receives decoded/extracted text.
+4. Worker applies `unicodedata.normalize(normalize_mode, line)` if mode is not `none`.
+5. Worker runs regex pretokenization and counts piece UTF-8 bytes.
+
+Runtime contract:
+
+1. `ByteLevelBPETokenizer.encode` does not apply Unicode normalization.
+2. Normalization therefore affects merge learning statistics, not runtime input transformation.
+3. `decode(encode(x)) == x` is expected for valid UTF-8 input text encoded by runtime (special-token skipping disabled).
+
 ## 7) Stage 1: parallel piece counting
 
 Module: `scripts/tokenizer_bpe/stage1_count.py`
@@ -279,7 +427,7 @@ Architecture:
 3. For JSONL, each line is parsed and `jsonl_text_field` is extracted if it is a string.
 4. Main process submits decoded line batches to `ProcessPoolExecutor`.
 5. Worker processes run `_worker_init` once to compile regex and load normalization config.
-6. Workers return `Counter[bytes]` + local piece count.
+6. Workers normalize each received line (if configured), pretokenize, and return `Counter[bytes]` + local piece count.
 7. Main process merges worker counters.
 
 Worker init:
@@ -293,9 +441,13 @@ def _worker_init(pattern_str, pattern_flags, normalize, max_piece_bytes):
 
 Main loop details:
 
-1. Maintains a bounded pending queue of futures (up to `num_workers`).
-2. Each queue item records `end_offset`, line count, and byte count metadata.
-3. File progress updates when a future resolves.
+1. Maintains a bounded pending future map (up to `num_workers`).
+2. Each submitted batch is assigned a monotonically increasing `batch_id` and records its `end_offset`.
+3. Workers are consumed as-completed (`wait(..., FIRST_COMPLETED)`) and buffered by `batch_id`.
+4. Main process applies only the next contiguous completed batch (`next_batch_to_merge`) to preserve determinism.
+5. `byte_offset` advances only when that contiguous batch is merged.
+6. Progress therefore advances only for the contiguous merged prefix of each file.
+7. `end_offset` is captured from `f.tell()` immediately after consuming whole lines via `readline()`, so checkpointed offsets are line-boundary aligned.
 
 ### 7.4 Stage 1 checkpointing and resume
 
@@ -326,18 +478,25 @@ Resume gate:
 
 1. Stage 1 checkpoint is accepted only if both `config_hash` and `pattern_hash` match.
 
+Offset and byte semantics (normative):
+
+1. For `.txt` / `.jsonl`, `byte_offset` is the offset in the raw file stream.
+2. For `.txt.gz` / `.jsonl.gz`, files are opened with `gzip.open(path, "rb")` and `byte_offset` is in the decompressed stream (`GzipFile.tell()` / `seek()` domain).
+3. Resume seeks with `f.seek(byte_offset)` in that same stream domain; for gzip this can be linear-time in offset.
+4. `total_bytes_processed` is incremented by `len(raw_line)` from the opened stream; for gzip this is decompressed bytes read, not compressed on-disk bytes.
+
 ### 7.5 Stage 1 pruning and memory control
 
 Pruning logic:
 
-1. Every 100 merged batches (after at least 10,000 lines), prune in-memory counter.
-2. Remove entries below `data.min_piece_freq` if > 1.
-3. Enforce `data.max_unique_pieces` using deterministic top-K:
+1. Every 100 merged batches (after at least 10,000 lines), optionally cap in-memory counter.
+2. Enforce `data.max_unique_pieces` using deterministic top-K:
    - sort key: frequency descending, bytes lexicographic ascending.
+3. `data.min_piece_freq` is applied once in Stage 2 (not during Stage 1 streaming).
 
 Final Stage 1 output:
 
-1. pruned `Counter[bytes]`
+1. capped `Counter[bytes]` (if `max_unique_pieces` is set)
 2. metadata with `training_corpus_sha256` computed from sorted file path + file size + mtime_ns.
 
 ## 8) Stage 2: training state initialization
@@ -352,9 +511,10 @@ Process:
 2. Sort by `(-freq, piece_bytes)`.
 3. Cap to `bpe.max_word_types`.
 4. Build:
-   - `words`: `list[list[int]]` where each piece bytestring becomes byte IDs.
-   - `freqs`: frequency list aligned to `words`.
+   - `words`: list of dense integer arrays (`array('H')` when max symbol ID fits in 16 bits, else `array('I')`).
+   - `freqs`: `array('Q')` aligned to `words`.
    - `id_to_token_bytes`: initial `[bytes([0]), ..., bytes([255])]`.
+   - `word_storage_type`: `'H'` or `'I'`.
 
 Important: special tokens are not part of merge learning state.
 
@@ -366,20 +526,28 @@ Module: `scripts/tokenizer_bpe/stage3_train.py`
 
 Main mutable training state:
 
-1. `words: list[list[int]]`
-2. `freqs: list[int]`
+1. `words: list[array]` (`array('H')` or `array('I')`)
+2. `freqs: array('Q')`
 3. `id_to_token_bytes: list[bytes]`
 4. `merge_pairs: list[tuple[int, int]]`
 
 Pair index structures:
 
-1. `pair_count[(a, b)] -> weighted frequency`
-2. `pair_to_words[(a, b)] -> list[word_idx]` (lazy, append-only)
-3. max-heap entries `(-count, a, b)` for deterministic best-pair selection
+1. `pair_id = (a << 32) | b`
+2. `pair_count[pair_id] -> weighted frequency`
+3. `pair_to_words[pair_id] -> list[word_idx]` (lazy append-heavy; merged pair list removed after use)
+4. max-heap entries `(-count, pair_id)` for deterministic best-pair selection
 
 Weighted pair count definition:
 
-`pair_count[(a, b)] = sum(freq[word_idx] * occurrences_of_pair_in_word)`
+`pair_count[pair_id] = sum(freq[word_idx] * occurrences_of_pair_in_word)`
+
+Initial construction contract:
+
+1. For each word type `words[idx]`, compute local adjacent-pair multiplicities with `count_adjacent_pairs`.
+2. For each local pair `pair_id` with local count `occ`, add `freqs[idx] * occ` to `pair_count[pair_id]`.
+3. Append `idx` to `pair_to_words[pair_id]` once for that word during initial build, even if `occ > 1`.
+4. During later incremental updates, `pair_to_words` may contain duplicate/stale word indices; merge step deduplicates with `seen_word_indices`.
 
 ### 9.2 Target merge count
 
@@ -394,14 +562,17 @@ Lazy heap pop:
 
 ```python
 while heap:
-    neg_count, a, b = heapq.heappop(heap)
+    neg_count, pair_id = heapq.heappop(heap)
     count = -neg_count
-    if pair_count.get((a, b), 0) == count:
+    if pair_count.get(pair_id, 0) == count:
+        a = pair_id >> 32
+        b = pair_id & ((1 << 32) - 1)
         return a, b, count
 return None
 ```
 
-Tie-break behavior is deterministic because heap tuples are ordered as `(-count, a, b)`.
+Tie-break behavior is deterministic because heap tuples are ordered as `(-count, pair_id)`.
+Tie-break domain is integer token IDs `(a, b)` encoded in `pair_id`, not token strings.
 
 ### 9.4 Merge transaction flow
 
@@ -411,7 +582,7 @@ Each merge executes as:
 2. Stop if no candidate or `best_count < bpe.min_merge_freq`.
 3. Append WAL `BEGIN`.
 4. Create `new_id = len(id_to_token_bytes)` and append merged bytes.
-5. Update only candidate words from `pair_to_words[(a, b)]`.
+5. Update only candidate words from `pair_to_words[pair_id]`, then delete that merged pair list.
 6. Append WAL `COMMIT`.
 7. Periodically write snapshot/state/metrics.
 
@@ -434,12 +605,13 @@ For each candidate word:
 6. apply pair deltas weighted by `freqs[word_idx]`.
 7. push updated pair counts to heap.
 8. append word index to `pair_to_words` for all pairs now present.
+9. occasionally rebuild heap when `len(heap)` grows too large relative to `len(pair_count)`.
 
 Core transformation:
 
 ```python
-def merge_symbols(symbols, a, b, new_id):
-    merged = []
+def merge_symbols(symbols, a, b, new_id, word_storage_type):
+    merged = array(word_storage_type)
     i = 0
     while i < len(symbols):
         if i + 1 < len(symbols) and symbols[i] == a and symbols[i + 1] == b:
@@ -467,6 +639,7 @@ Snapshot payload:
 5. `last_merge`
 6. `config_hash`
 7. `pattern_hash`
+8. `word_storage_type`
 
 Snapshot files are checksum-protected (`.sha256`) and old snapshots are pruned to `keep_last_snapshots`.
 
@@ -493,7 +666,9 @@ Durability model:
 
 1. WAL is append-only.
 2. A merge is durable only after COMMIT line is written.
-3. If `checkpointing.wal_fsync_each_commit` is true, each BEGIN/COMMIT write is fsync'd.
+3. If `checkpointing.wal_fsync_each_commit` is true, WAL is fsync'd after each committed merge (paranoid mode).
+4. Otherwise WAL is fsync'd every `checkpointing.wal_fsync_every_commits` commits when that value is greater than zero.
+5. WAL is also fsync'd before snapshot writes and at trainer shutdown when pending commits exist.
 
 ## 10) Export contract
 
@@ -572,6 +747,15 @@ Runtime helpers include:
 2. piece-level greedy BPE application by best-rank pair.
 3. decode by concatenating token bytes and UTF-8 decoding.
 
+Runtime contract (normative):
+
+1. Runtime pretokenization uses exported `pattern` and `pattern_flags` from `tokenizer_config.json`.
+2. Each pretokenized piece starts as single-byte symbols: `[bytes([b]) for b in piece.encode("utf-8")]`.
+3. Merge application is greedy by smallest merge rank from `merges.txt` order.
+4. Final symbol-to-ID mapping uses `token_bytes_to_id` built from `vocab.json`; runtime must not assume base-byte IDs are `0..255`.
+5. Runtime `encode` treats input as plain text only; special-token strings are not recognized as atomic spans.
+6. Runtime `decode` concatenates token bytes and UTF-8 decodes with `errors="replace"`.
+
 Core encode loop:
 
 ```python
@@ -596,19 +780,19 @@ while len(symbols) > 1:
 Determinism levers implemented:
 
 1. deterministic file discovery and sorting.
-2. deterministic counter pruning/top-K tie-break.
-3. deterministic pair selection tie-break (`(-count, a, b)`).
+2. deterministic Stage 1 top-K capping tie-break (frequency desc, bytes asc).
+3. deterministic pair selection tie-break (`(-count, pair_id)` where `pair_id` encodes `(a, b)`).
 4. deterministic Stage 2 inventory sorting.
 5. hash-gated checkpoint/snapshot reuse.
 
 Performance strategy:
 
 1. parallelize Stage 1 only (CPU-friendly and low coupling).
-2. keep Stage 3 single-process with incremental data structures.
-3. use lazy invalidation for `pair_to_words` and heap staleness.
+2. keep Stage 3 single-process with compact integer arrays and packed pair IDs.
+3. use lazy invalidation plus heap rebuild and merged-pair list cleanup to limit stale growth.
 4. expose practical caps:
    - `max_piece_bytes`
-   - `min_piece_freq`
+   - `min_piece_freq` (applied in Stage 2)
    - `max_unique_pieces`
    - `max_word_types`
 

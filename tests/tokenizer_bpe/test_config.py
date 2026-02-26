@@ -50,6 +50,13 @@ def test_load_config_rejects_invalid_vocab_size(tmp_path):
         load_config(cfg_path)
 
 
+def test_load_config_rejects_negative_wal_fsync_every_commits(tmp_path):
+    cfg_path = tmp_path / "tokenizer.yaml"
+    cfg_path.write_text("checkpointing:\n  wal_fsync_every_commits: -1\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="wal_fsync_every_commits"):
+        load_config(cfg_path)
+
+
 def test_load_config_requires_mapping(tmp_path):
     cfg_path = tmp_path / "tokenizer.yaml"
     cfg_path.write_text("- item\n- another\n", encoding="utf-8")

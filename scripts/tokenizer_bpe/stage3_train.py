@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from array import array
+from collections import defaultdict
 import heapq
 import logging
 import os
@@ -13,74 +14,141 @@ from typing import Any, Iterable
 from .io_atomic import atomic_dump_json, atomic_dump_pickle_with_checksum, load_pickle_with_checksum
 
 
-Pair = tuple[int, int]
+PAIR_SHIFT = 32
+PAIR_MASK = (1 << PAIR_SHIFT) - 1
+HEAP_REBUILD_RATIO = 6
 
 
-def count_adjacent_pairs(symbols: list[int]) -> Counter[Pair]:
-    counts: Counter[Pair] = Counter()
-    for i in range(len(symbols) - 1):
-        counts[(symbols[i], symbols[i + 1])] += 1
+def make_pair_id(a: int, b: int) -> int:
+    return (int(a) << PAIR_SHIFT) | int(b)
+
+
+def split_pair_id(pair_id: int) -> tuple[int, int]:
+    return pair_id >> PAIR_SHIFT, pair_id & PAIR_MASK
+
+
+def _select_word_storage_type(cfg: dict[str, Any]) -> str:
+    special_tokens = cfg.get("special_tokens", {}).get("tokens", [])
+    max_merges = cfg["bpe"]["max_merges"]
+    if max_merges is None:
+        target_merges = max(0, int(cfg["bpe"]["vocab_size"]) - 256 - len(special_tokens))
+    else:
+        target_merges = max(0, int(max_merges))
+    max_symbol_id = 255 + target_merges
+    return "H" if max_symbol_id < 65536 else "I"
+
+
+def _normalize_words(raw_words: Iterable[Iterable[int]], word_storage_type: str) -> list[array]:
+    words: list[array] = []
+    for symbols in raw_words:
+        if isinstance(symbols, array):
+            words.append(array(word_storage_type, symbols))
+        else:
+            words.append(array(word_storage_type, symbols))
+    return words
+
+
+def _normalize_freqs(raw_freqs: Iterable[int]) -> array:
+    if isinstance(raw_freqs, array):
+        return array("Q", raw_freqs)
+    return array("Q", (int(freq) for freq in raw_freqs))
+
+
+def count_adjacent_pairs(symbols: Iterable[int]) -> dict[int, int]:
+    counts: dict[int, int] = {}
+    iterator = iter(symbols)
+    try:
+        prev = int(next(iterator))
+    except StopIteration:
+        return counts
+    for current in iterator:
+        current_int = int(current)
+        pair_id = make_pair_id(prev, current_int)
+        counts[pair_id] = counts.get(pair_id, 0) + 1
+        prev = current_int
     return counts
 
 
-def contains_pair(symbols: list[int], a: int, b: int) -> bool:
-    for i in range(len(symbols) - 1):
-        if symbols[i] == a and symbols[i + 1] == b:
+def contains_pair(symbols: Iterable[int], a: int, b: int) -> bool:
+    first = True
+    prev = 0
+    for current in symbols:
+        current_int = int(current)
+        if not first and prev == a and current_int == b:
             return True
+        prev = current_int
+        first = False
     return False
 
 
-def merge_symbols(symbols: list[int], a: int, b: int, new_id: int) -> list[int]:
-    merged: list[int] = []
+def merge_symbols(symbols: array, a: int, b: int, new_id: int, word_storage_type: str) -> array:
+    merged = array(word_storage_type)
     i = 0
     while i < len(symbols):
-        if i + 1 < len(symbols) and symbols[i] == a and symbols[i + 1] == b:
+        if i + 1 < len(symbols) and int(symbols[i]) == a and int(symbols[i + 1]) == b:
             merged.append(new_id)
             i += 2
         else:
-            merged.append(symbols[i])
+            merged.append(int(symbols[i]))
             i += 1
     return merged
 
 
 def _build_pair_structures(
-    words: list[list[int]],
-    freqs: list[int],
-) -> tuple[dict[Pair, int], dict[Pair, list[int]], list[tuple[int, int, int]]]:
-    pair_count: dict[Pair, int] = {}
-    pair_to_words: dict[Pair, list[int]] = defaultdict(list)
+    words: list[array],
+    freqs: array,
+) -> tuple[dict[int, int], dict[int, list[int]], list[tuple[int, int]]]:
+    pair_count: dict[int, int] = {}
+    pair_to_words: dict[int, list[int]] = defaultdict(list)
 
     for idx, symbols in enumerate(words):
         local_pairs = count_adjacent_pairs(symbols)
         if not local_pairs:
             continue
-        freq = freqs[idx]
-        for pair, occ in local_pairs.items():
-            pair_count[pair] = pair_count.get(pair, 0) + freq * occ
-            pair_to_words[pair].append(idx)
+        freq = int(freqs[idx])
+        for pair_id, occ in local_pairs.items():
+            pair_count[pair_id] = pair_count.get(pair_id, 0) + freq * occ
+            pair_to_words[pair_id].append(idx)
 
-    heap = [(-count, pair[0], pair[1]) for pair, count in pair_count.items() if count > 0]
+    heap = [(-count, pair_id) for pair_id, count in pair_count.items() if count > 0]
     heapq.heapify(heap)
     return pair_count, pair_to_words, heap
 
 
 def _pop_best_pair(
-    heap: list[tuple[int, int, int]],
-    pair_count: dict[Pair, int],
+    heap: list[tuple[int, int]],
+    pair_count: dict[int, int],
 ) -> tuple[int, int, int] | None:
     while heap:
-        neg_count, a, b = heapq.heappop(heap)
+        neg_count, pair_id = heapq.heappop(heap)
         count = -neg_count
-        if pair_count.get((a, b), 0) == count:
+        if pair_count.get(pair_id, 0) == count:
+            a, b = split_pair_id(pair_id)
             return a, b, count
     return None
 
 
-def _append_wal_line(handle, line: str, durable: bool) -> None:
+def _rebuild_heap(pair_count: dict[int, int]) -> list[tuple[int, int]]:
+    heap = [(-count, pair_id) for pair_id, count in pair_count.items() if count > 0]
+    heapq.heapify(heap)
+    return heap
+
+
+def _maybe_rebuild_heap(heap: list[tuple[int, int]], pair_count: dict[int, int]) -> None:
+    if not pair_count:
+        heap.clear()
+        return
+    if len(heap) > HEAP_REBUILD_RATIO * len(pair_count):
+        heap[:] = _rebuild_heap(pair_count)
+
+
+def _append_wal_line(handle, line: str) -> None:
     handle.write(line)
     handle.flush()
-    if durable:
-        os.fsync(handle.fileno())
+
+
+def _fsync_wal(handle) -> None:
+    os.fsync(handle.fileno())
 
 
 def parse_wal_commits(wal_path: Path) -> list[tuple[int, int, int, int]]:
@@ -161,11 +229,11 @@ def load_latest_snapshot(
     return None
 
 
-def _apply_merge_everywhere(words: list[list[int]], a: int, b: int, new_id: int) -> int:
+def _apply_merge_everywhere(words: list[array], a: int, b: int, new_id: int, word_storage_type: str) -> int:
     affected = 0
     for idx, symbols in enumerate(words):
         if contains_pair(symbols, a, b):
-            words[idx] = merge_symbols(symbols, a, b, new_id)
+            words[idx] = merge_symbols(symbols, a, b, new_id, word_storage_type)
             affected += 1
     return affected
 
@@ -200,8 +268,11 @@ def train_bpe(
     metrics_path = run_dir / "metrics.jsonl"
     state_json_path = run_dir / "state.json"
 
-    words = [list(s) for s in initial_state["words"]]
-    freqs = list(initial_state["freqs"])
+    word_storage_type = initial_state.get("word_storage_type") or _select_word_storage_type(cfg)
+    if word_storage_type not in {"H", "I"}:
+        word_storage_type = _select_word_storage_type(cfg)
+    words = _normalize_words(initial_state["words"], word_storage_type)
+    freqs = _normalize_freqs(initial_state["freqs"])
     id_to_token_bytes = list(initial_state["id_to_token_bytes"])
     merge_pairs: list[tuple[int, int]] = []
     last_merge = 0
@@ -209,10 +280,13 @@ def train_bpe(
     if resume:
         snapshot_state = load_latest_snapshot(snapshot_dir, config_hash, pattern_hash, logger)
         if snapshot_state is not None:
-            words = snapshot_state["words"]
-            freqs = snapshot_state["freqs"]
-            id_to_token_bytes = snapshot_state["id_to_token_bytes"]
-            merge_pairs = snapshot_state.get("merge_pairs", [])
+            word_storage_type = snapshot_state.get("word_storage_type") or word_storage_type
+            if word_storage_type not in {"H", "I"}:
+                word_storage_type = _select_word_storage_type(cfg)
+            words = _normalize_words(snapshot_state["words"], word_storage_type)
+            freqs = _normalize_freqs(snapshot_state["freqs"])
+            id_to_token_bytes = list(snapshot_state["id_to_token_bytes"])
+            merge_pairs = [tuple(pair) for pair in snapshot_state.get("merge_pairs", [])]
             last_merge = int(snapshot_state.get("last_merge", len(merge_pairs)))
             logger.info("Resume loaded snapshot at merge %s", last_merge)
 
@@ -226,7 +300,7 @@ def train_bpe(
                     f"WAL new_id mismatch at merge {merge_idx}: wal={wal_new_id}, expected={expected_new_id}"
                 )
             id_to_token_bytes.append(id_to_token_bytes[a] + id_to_token_bytes[b])
-            _apply_merge_everywhere(words, a, b, wal_new_id)
+            _apply_merge_everywhere(words, a, b, wal_new_id, word_storage_type)
             merge_pairs.append((a, b))
             last_merge = merge_idx
         if wal_commits:
@@ -237,11 +311,13 @@ def train_bpe(
 
     wal_path.parent.mkdir(parents=True, exist_ok=True)
     wal_file = wal_path.open("a", encoding="utf-8")
-    wal_durable = bool(checkpoint_cfg["wal_fsync_each_commit"])
+    wal_durable_each_commit = bool(checkpoint_cfg.get("wal_fsync_each_commit", False))
+    wal_fsync_every_commits = int(checkpoint_cfg.get("wal_fsync_every_commits", 0))
     snapshot_every_merges = int(checkpoint_cfg["snapshot_every_merges"])
     snapshot_every_seconds = int(checkpoint_cfg["snapshot_every_seconds"])
     keep_last_snapshots = int(checkpoint_cfg["keep_last_snapshots"])
 
+    wal_commits_since_fsync = 0
     last_snapshot_time = time.time()
     start_index = last_merge + 1
     completed = last_merge
@@ -261,13 +337,13 @@ def train_bpe(
                 logger.info("Stopping at merge %s due to min_merge_freq threshold.", merge_index)
                 break
 
-            _append_wal_line(wal_file, f"BEGIN\t{merge_index}\t{a}\t{b}\t{best_count}\n", wal_durable)
+            _append_wal_line(wal_file, f"BEGIN\t{merge_index}\t{a}\t{b}\t{best_count}\n")
 
             new_id = len(id_to_token_bytes)
             id_to_token_bytes.append(id_to_token_bytes[a] + id_to_token_bytes[b])
 
-            candidates = pair_to_words.get((a, b), [])
-            touched_pairs: set[Pair] = set()
+            merged_pair_id = make_pair_id(a, b)
+            candidates = pair_to_words.pop(merged_pair_id, [])
             affected_words = 0
             seen_word_indices: set[int] = set()
             for word_idx in candidates:
@@ -280,7 +356,7 @@ def train_bpe(
                     continue
 
                 old_pairs = count_adjacent_pairs(symbols)
-                new_symbols = merge_symbols(symbols, a, b, new_id)
+                new_symbols = merge_symbols(symbols, a, b, new_id, word_storage_type)
                 if new_symbols == symbols:
                     continue
 
@@ -288,34 +364,46 @@ def train_bpe(
                 new_pairs = count_adjacent_pairs(new_symbols)
                 affected_words += 1
 
-                all_local_pairs = set(old_pairs.keys()) | set(new_pairs.keys())
-                freq = freqs[word_idx]
-                for pair in all_local_pairs:
-                    delta = (new_pairs.get(pair, 0) - old_pairs.get(pair, 0)) * freq
+                all_local_pair_ids = set(old_pairs.keys()) | set(new_pairs.keys())
+                freq = int(freqs[word_idx])
+                for pair_id in all_local_pair_ids:
+                    delta = (new_pairs.get(pair_id, 0) - old_pairs.get(pair_id, 0)) * freq
                     if delta == 0:
                         continue
-                    updated = pair_count.get(pair, 0) + delta
+                    updated = pair_count.get(pair_id, 0) + delta
                     if updated <= 0:
-                        pair_count.pop(pair, None)
+                        pair_count.pop(pair_id, None)
                     else:
-                        pair_count[pair] = updated
-                        heapq.heappush(heap, (-updated, pair[0], pair[1]))
-                    touched_pairs.add(pair)
+                        pair_count[pair_id] = updated
+                        heapq.heappush(heap, (-updated, pair_id))
 
-                for pair in new_pairs.keys():
-                    pair_to_words[pair].append(word_idx)
+                for pair_id in new_pairs.keys():
+                    pair_to_words[pair_id].append(word_idx)
 
-            pair_count.pop((a, b), None)
+            pair_count.pop(merged_pair_id, None)
             merge_pairs.append((a, b))
             completed = merge_index
 
-            _append_wal_line(wal_file, f"COMMIT\t{merge_index}\t{new_id}\n", wal_durable)
+            _append_wal_line(wal_file, f"COMMIT\t{merge_index}\t{new_id}\n")
+            wal_commits_since_fsync += 1
+            if wal_durable_each_commit:
+                _fsync_wal(wal_file)
+                wal_commits_since_fsync = 0
+            elif wal_fsync_every_commits > 0 and wal_commits_since_fsync >= wal_fsync_every_commits:
+                _fsync_wal(wal_file)
+                wal_commits_since_fsync = 0
+
+            _maybe_rebuild_heap(heap, pair_count)
 
             now = time.time()
             should_snapshot = (
                 (merge_index % snapshot_every_merges == 0) or ((now - last_snapshot_time) >= snapshot_every_seconds)
             )
             if should_snapshot:
+                if wal_commits_since_fsync > 0:
+                    _fsync_wal(wal_file)
+                    wal_commits_since_fsync = 0
+
                 snapshot_state = {
                     "words": words,
                     "freqs": freqs,
@@ -324,6 +412,7 @@ def train_bpe(
                     "last_merge": merge_index,
                     "config_hash": config_hash,
                     "pattern_hash": pattern_hash,
+                    "word_storage_type": word_storage_type,
                 }
                 _write_snapshot(snapshot_dir, merge_index, snapshot_state, keep_last_snapshots, logger)
                 last_snapshot_time = now
@@ -362,6 +451,8 @@ def train_bpe(
                     len(pair_count),
                 )
     finally:
+        if wal_commits_since_fsync > 0:
+            _fsync_wal(wal_file)
         wal_file.close()
 
     if completed > 0:
@@ -373,6 +464,7 @@ def train_bpe(
             "last_merge": completed,
             "config_hash": config_hash,
             "pattern_hash": pattern_hash,
+            "word_storage_type": word_storage_type,
         }
         _write_snapshot(snapshot_dir, completed, snapshot_state, keep_last_snapshots, logger)
 
@@ -383,5 +475,5 @@ def train_bpe(
         "id_to_token_bytes": id_to_token_bytes,
         "merge_pairs": merge_pairs,
         "last_merge": completed,
+        "word_storage_type": word_storage_type,
     }
-

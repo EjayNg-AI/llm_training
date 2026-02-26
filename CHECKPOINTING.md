@@ -15,6 +15,15 @@ Files:
 - total processed lines, pieces, and bytes
 - `config_hash` and `pattern_hash`
 
+Stage 1 offset semantics (normative):
+
+1. Futures may complete out of order, but results are applied in increasing `batch_id` order.
+2. Per-file offsets advance only when the next contiguous `batch_id` is merged.
+3. Offsets are captured from `f.tell()` after `readline()` consumption, so checkpoints move on line boundaries.
+4. For `.txt`/`.jsonl`, offsets are raw file byte offsets.
+5. For `.txt.gz`/`.jsonl.gz`, offsets are gzip decompressed-stream offsets (`gzip.open(..., "rb")` + `tell()`/`seek()` domain).
+6. `total_bytes_processed` is measured from the opened stream (`len(raw_line)`), which is decompressed bytes for gzip inputs.
+
 Stage 1 writes are atomic:
 
 1. write temp file
@@ -38,6 +47,7 @@ Rule:
 
 - only merges with `COMMIT` are considered durable
 - `BEGIN` without matching `COMMIT` is ignored on recovery
+- merged-pair candidate lists are removed after each merge (`pair_to_words.pop(pair_id, [])`) to avoid stale-list growth
 
 ## Snapshot validity checks
 
@@ -58,3 +68,8 @@ A snapshot is accepted only when:
 
 If config or regex contract changes, resume fails fast by design.
 
+WAL fsync policy:
+
+1. `wal_fsync_each_commit=true` enables paranoid mode (fsync after each committed merge).
+2. Otherwise, WAL fsync runs every `wal_fsync_every_commits` commits when this value is greater than zero.
+3. WAL is always fsync'd before snapshots and on shutdown if pending commits exist.

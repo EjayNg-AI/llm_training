@@ -14,6 +14,97 @@ Format:
 
 ## Unreleased
 
+### 2026-02-26 (Tokenizer BPE robustness/scaling feedback implementation)
+
+Summary:
+
+1. Updated Stage 1 counting to stop streaming `min_piece_freq` pruning and keep deterministic top-K capping (`max_unique_pieces`) as the only streaming approximation knob.
+2. Changed Stage 1 parallelism to allow out-of-order worker completion while applying results in deterministic `batch_id` order.
+3. Refactored Stage 2/3 training state to compact integer arrays and switched Stage 3 pair keys from tuple `(a, b)` to packed integer `pair_id`.
+4. Added Stage 3 pressure valves: periodic heap rebuild on stale-growth ratio and merged-pair candidate-list deletion.
+5. Updated WAL durability defaults to PoC-friendly behavior with periodic fsync (`wal_fsync_every_commits`) and optional paranoid per-commit mode.
+6. Updated tokenizer technical docs and checkpoint/config references to match new behavior.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/stage1_count.py`
+2. `scripts/tokenizer_bpe/stage2_init.py`
+3. `scripts/tokenizer_bpe/stage3_train.py`
+4. `scripts/tokenizer_bpe/config.py`
+5. `configs/tokenizer_bpe.yaml`
+6. `tests/tokenizer_bpe/test_stage2_init.py`
+7. `tests/tokenizer_bpe/test_stage3_core.py`
+8. `CONFIG.md`
+9. `CHECKPOINTING.md`
+10. `docs/TOKENIZER_BPE.md`
+11. `docs/IMPLEMENTED_STEPS.md`
+12. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_stage1_count_unit.py tests/tokenizer_bpe/test_stage2_init.py tests/tokenizer_bpe/test_stage3_core.py tests/tokenizer_bpe/test_stage3_recovery.py tests/tokenizer_bpe/test_config.py` passed (`22 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe` passed (`40 passed`).
+
+Documentation updates:
+
+1. Updated Stage 1/2/3 algorithm contracts and default config snippets in `docs/TOKENIZER_BPE.md`.
+2. Updated durability semantics in `CHECKPOINTING.md`.
+3. Updated tokenizer config field descriptions in `CONFIG.md`.
+4. Updated Stage 03 implemented-behavior summary in `docs/IMPLEMENTED_STEPS.md`.
+
+### 2026-02-25 (Tokenizer doc: core algorithm explainer)
+
+Summary:
+
+1. Added a new top-level educational section to `docs/TOKENIZER_BPE.md` that explains the full training flow for independent implementation.
+2. Documented vocabulary initialization, Stage 1 pretokenization/counting, Stage 3 merge computation, special-token handling, and final exported artifacts.
+3. Added implementation-oriented code snippets that map directly to the repository trainer/runtime architecture.
+
+Impacted files/modules:
+
+1. `docs/TOKENIZER_BPE.md`
+2. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Documentation-only update; code behavior unchanged.
+
+Documentation updates:
+
+1. Expanded tokenizer reference with an educational yet implementation-precise overview near the top of the document.
+
+### 2026-02-25 (Tokenizer reproducibility-spec clarification pass)
+
+Summary:
+
+1. Hardened tokenizer documentation with normative Stage 1 concurrency and progress semantics, including FIFO merge ordering and contiguous-prefix offset advancement.
+2. Explicitly defined `.gz` offset domain and byte accounting semantics for Stage 1 resume/progress.
+3. Added end-to-end normalization contract (training-time location and runtime non-normalization behavior).
+4. Defined `config_hash` canonicalization exactly and added a normative example payload/hash pair.
+5. Clarified Stage 3 initial pair-structure construction and tie-break domain as integer token IDs.
+6. Expanded runtime tokenizer contract for piece initialization, merge-rank application, ID lookup semantics, and special-token handling.
+
+Impacted files/modules:
+
+1. `docs/TOKENIZER_BPE.md`
+2. `CONFIG.md`
+3. `CHECKPOINTING.md`
+4. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Documentation-only update; code behavior unchanged.
+2. Contracts were cross-checked against:
+   - `scripts/tokenizer_bpe/stage1_count.py`
+   - `scripts/tokenizer_bpe/config.py`
+   - `scripts/tokenizer_bpe/stage3_train.py`
+   - `src/llm_training/tokenizer/runtime.py`
+
+Documentation updates:
+
+1. Added normative algorithm semantics required for independent implementation equivalence.
+2. Deferred non-essential performance/micro-policy clarifications (heap maintenance micro-optimizations and runtime piece-cache strategy) for separate review.
+
 ### 2026-02-22 (Canonical artifact-lineage pipeline implementation)
 
 Summary:

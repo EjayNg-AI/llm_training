@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections import Counter, deque
-from concurrent.futures import Future, ProcessPoolExecutor
+from collections import Counter
+from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 import gzip
 import hashlib
 import json
@@ -227,7 +227,6 @@ def count_pieces(
     max_bytes = data_cfg["max_bytes"]
     num_workers = int(data_cfg["num_workers"])
     batch_lines = int(data_cfg["batch_lines"])
-    min_piece_freq = int(data_cfg["min_piece_freq"])
     max_unique_pieces = data_cfg["max_unique_pieces"]
     snapshot_every_batches = int(checkpoint_cfg["stage1_snapshot_every_batches"])
     snapshot_every_seconds = int(checkpoint_cfg["snapshot_every_seconds"])
@@ -275,21 +274,22 @@ def count_pieces(
                     offset = 0
                     file_state["byte_offset"] = 0
 
-                pending: deque[tuple[Future, int, int, int]] = deque()
+                pending: dict[Future, tuple[int, int]] = {}
+                completed: dict[int, tuple[int, Counter[bytes], int]] = {}
                 reached_eof = False
+                next_batch_id = 0
+                next_batch_to_merge = 0
 
                 while not reached_eof or pending:
                     while not reached_eof and len(pending) < num_workers and not should_stop():
                         batch: list[str] = []
                         lines_read = 0
-                        bytes_read = 0
                         for _ in range(batch_lines):
                             raw = f.readline()
                             if not raw:
                                 reached_eof = True
                                 break
                             lines_read += 1
-                            bytes_read += len(raw)
                             decoded = raw.decode("utf-8", errors=data_cfg["decode_errors"])
                             text = _extract_text(
                                 decoded_line=decoded,
@@ -309,46 +309,59 @@ def count_pieces(
 
                         end_offset = f.tell()
                         future = executor.submit(_worker_count_batch, batch)
-                        pending.append((future, end_offset, lines_read, bytes_read))
+                        pending[future] = (next_batch_id, end_offset)
+                        next_batch_id += 1
                         if should_stop():
                             break
 
                     if not pending:
                         break
 
-                    future, end_offset, lines_read, bytes_read = pending.popleft()
-                    local_counter, local_pieces = future.result()
-                    piece_counts.update(local_counter)
-                    progress["total_pieces_seen"] += int(local_pieces)
-                    file_state["byte_offset"] = end_offset
-                    merged_batches += 1
+                    done, _ = wait(set(pending.keys()), return_when=FIRST_COMPLETED)
+                    for done_future in done:
+                        batch_id, end_offset = pending.pop(done_future)
+                        local_counter, local_pieces = done_future.result()
+                        completed[batch_id] = (end_offset, local_counter, int(local_pieces))
 
-                    if merged_batches % 100 == 0 and progress["total_lines_processed"] >= 10000:
-                        piece_counts = _prune_counter(piece_counts, min_piece_freq, max_unique_pieces)
+                    while next_batch_to_merge in completed:
+                        end_offset, local_counter, local_pieces = completed.pop(next_batch_to_merge)
+                        next_batch_to_merge += 1
 
-                    now = time.time()
-                    if (
-                        merged_batches % snapshot_every_batches == 0
-                        or (now - last_snapshot_time) >= snapshot_every_seconds
-                    ):
-                        progress["snapshot_id"] += 1
-                        progress["timestamp"] = int(now)
-                        _save_stage1_checkpoint(counts_path, progress_path, piece_counts, progress)
-                        last_snapshot_time = now
-                        logger.info(
-                            "Stage 1 checkpoint: lines=%s pieces=%s unique=%s",
-                            progress["total_lines_processed"],
-                            progress["total_pieces_seen"],
-                            len(piece_counts),
-                        )
+                        piece_counts.update(local_counter)
+                        progress["total_pieces_seen"] += local_pieces
+                        file_state["byte_offset"] = end_offset
+                        merged_batches += 1
 
-                    if should_stop():
-                        break
+                        # Keep a single deterministic approximation knob in Stage 1:
+                        # optional top-K capping by absolute count.
+                        if (
+                            max_unique_pieces is not None
+                            and merged_batches % 100 == 0
+                            and progress["total_lines_processed"] >= 10000
+                        ):
+                            piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
+
+                        now = time.time()
+                        if (
+                            merged_batches % snapshot_every_batches == 0
+                            or (now - last_snapshot_time) >= snapshot_every_seconds
+                        ):
+                            progress["snapshot_id"] += 1
+                            progress["timestamp"] = int(now)
+                            _save_stage1_checkpoint(counts_path, progress_path, piece_counts, progress)
+                            last_snapshot_time = now
+                            logger.info(
+                                "Stage 1 checkpoint: lines=%s pieces=%s unique=%s",
+                                progress["total_lines_processed"],
+                                progress["total_pieces_seen"],
+                                len(piece_counts),
+                            )
 
                 if reached_eof and not should_stop():
                     file_state["done"] = True
 
-    piece_counts = _prune_counter(piece_counts, min_piece_freq, max_unique_pieces)
+    if max_unique_pieces is not None:
+        piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
     progress["snapshot_id"] += 1
     progress["timestamp"] = int(time.time())
     _save_stage1_checkpoint(counts_path, progress_path, piece_counts, progress)
@@ -366,4 +379,3 @@ def count_pieces(
         "training_corpus_sha256": corpus_hash,
     }
     return piece_counts, metadata
-

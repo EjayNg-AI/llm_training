@@ -49,7 +49,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "placement": "end",
     },
     "checkpointing": {
-        "wal_fsync_each_commit": True,
+        "wal_fsync_each_commit": False,
+        "wal_fsync_every_commits": 50,
         "snapshot_every_merges": 200,
         "snapshot_every_seconds": 300,
         "keep_last_snapshots": 3,
@@ -87,6 +88,8 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError("data.batch_lines must be >= 1")
     if int(cfg["bpe"]["vocab_size"]) < 256:
         raise ValueError("bpe.vocab_size must be >= 256")
+    if int(cfg["checkpointing"].get("wal_fsync_every_commits", 0)) < 0:
+        raise ValueError("checkpointing.wal_fsync_every_commits must be >= 0")
 
 
 def canonical_config_json(cfg: dict[str, Any]) -> str:
@@ -129,4 +132,3 @@ def load_config(path: str | Path) -> dict[str, Any]:
         "config_hash": config_hash,
     }
     return cfg
-

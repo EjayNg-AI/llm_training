@@ -31,8 +31,8 @@ The tokenizer trainer uses one source-of-truth config file:
 - `max_lines`: optional global cap on lines read
 - `num_workers`: Stage 1 worker process count
 - `batch_lines`: line batch size per worker task
-- `min_piece_freq`: low-frequency filtering threshold
-- `max_unique_pieces`: optional hard cap after deterministic top-K pruning
+- `min_piece_freq`: low-frequency filtering threshold applied during Stage 2 inventory initialization
+- `max_unique_pieces`: optional deterministic top-K cap used as Stage 1 memory approximation control
 
 ## `pretokenizer`
 
@@ -47,6 +47,22 @@ Resume safety:
 
 - Run state records `pattern_alias`, exact pattern string, flags, and `regex` module version.
 - A derived `pattern_hash` is enforced at resume time; mismatches fail fast.
+
+## Config hashing contract (`config_hash`)
+
+Tokenizer training computes `config_hash` from the merged config payload (defaults plus user overrides) before adding runtime metadata.
+
+Canonicalization is:
+
+1. Serialize with `json.dumps(cfg, sort_keys=True, separators=(",", ":"), ensure_ascii=False)`.
+2. Encode the serialized JSON as UTF-8.
+3. Compute SHA-256 over those bytes.
+
+Notes:
+
+- List order is preserved and contributes to hash identity.
+- No path normalization is applied; path strings are hashed as configured.
+- The normative implementation reference is `scripts/tokenizer_bpe/config.py` and the detailed algorithm contract is in `docs/TOKENIZER_BPE.md`.
 
 ## `bpe`
 
@@ -64,9 +80,9 @@ Resume safety:
 
 ## `checkpointing`
 
-- `wal_fsync_each_commit`: durable WAL on each BEGIN/COMMIT write
+- `wal_fsync_each_commit`: paranoid mode; fsync WAL after each committed merge
+- `wal_fsync_every_commits`: fsync cadence when not in paranoid mode (`0` disables periodic fsync and relies on snapshot/final fsync)
 - `snapshot_every_merges`: Stage 3 snapshot interval in merges
 - `snapshot_every_seconds`: Stage 1/3 time-based checkpoint interval
 - `keep_last_snapshots`: number of recent Stage 3 snapshots to retain
 - `stage1_snapshot_every_batches`: Stage 1 snapshot interval by merged worker results
-

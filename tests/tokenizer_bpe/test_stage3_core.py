@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from array import array
+
 import pytest
 
 from tokenizer_bpe.stage3_train import (
@@ -7,6 +9,7 @@ from tokenizer_bpe.stage3_train import (
     _pop_best_pair,
     count_adjacent_pairs,
     contains_pair,
+    make_pair_id,
     merge_symbols,
     train_bpe,
 )
@@ -22,6 +25,7 @@ def _minimal_cfg() -> dict:
         "special_tokens": {"tokens": ["<|endoftext|>", "<|pad|>"]},
         "checkpointing": {
             "wal_fsync_each_commit": False,
+            "wal_fsync_every_commits": 0,
             "snapshot_every_merges": 1,
             "snapshot_every_seconds": 999999,
             "keep_last_snapshots": 2,
@@ -32,23 +36,23 @@ def _minimal_cfg() -> dict:
 def test_count_adjacent_pairs_and_contains_pair():
     symbols = [1, 2, 1, 2, 3]
     counts = count_adjacent_pairs(symbols)
-    assert counts[(1, 2)] == 2
-    assert counts[(2, 1)] == 1
+    assert counts[make_pair_id(1, 2)] == 2
+    assert counts[make_pair_id(2, 1)] == 1
     assert contains_pair(symbols, 1, 2) is True
     assert contains_pair(symbols, 2, 2) is False
 
 
 def test_merge_symbols_non_overlapping_left_to_right():
-    assert merge_symbols([1, 1, 1], 1, 1, 9) == [9, 1]
-    assert merge_symbols([1, 2, 1, 2], 1, 2, 9) == [9, 9]
+    assert list(merge_symbols(array("H", [1, 1, 1]), 1, 1, 9, "H")) == [9, 1]
+    assert list(merge_symbols(array("H", [1, 2, 1, 2]), 1, 2, 9, "H")) == [9, 9]
 
 
 def test_heap_pop_best_pair_uses_lexicographic_tie_break():
-    words = [[1, 2], [1, 3]]
-    freqs = [2, 2]
+    words = [array("H", [1, 2]), array("H", [1, 3])]
+    freqs = array("Q", [2, 2])
     pair_count, _, heap = _build_pair_structures(words, freqs)
-    assert pair_count[(1, 2)] == 2
-    assert pair_count[(1, 3)] == 2
+    assert pair_count[make_pair_id(1, 2)] == 2
+    assert pair_count[make_pair_id(1, 3)] == 2
     assert _pop_best_pair(heap, pair_count) == (1, 2, 2)
 
 
