@@ -1,4 +1,4 @@
-"""Stage 1: parallel piece counting with progress checkpoints."""
+"""Stage 1: parallel piece counting."""
 
 from __future__ import annotations
 
@@ -9,21 +9,16 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-import time
 from typing import Any
 import unicodedata
 
-from .io_atomic import atomic_dump_json, atomic_dump_pickle, load_pickle_with_checksum
 from .pretokenizer import compile_pattern, iter_pieces
 
-
-CHECKPOINT_DIR_NAME = "checkpoints"
-COUNTS_SNAPSHOT_NAME = "word_counts.snapshot.pkl"
-PROGRESS_NAME = "word_counts.progress.json"
 
 _WORKER_PATTERN = None
 _WORKER_NORMALIZE = "none"
 _WORKER_MAX_PIECE_BYTES = 200
+STAGE1_LOG_EVERY_BATCHES = 50
 
 
 def _worker_init(pattern_str: str, pattern_flags: int, normalize: str, max_piece_bytes: int) -> None:
@@ -129,59 +124,6 @@ def _compute_corpus_fingerprint(file_paths: list[Path]) -> str:
     return h.hexdigest()
 
 
-def _checkpoint_paths(run_dir: Path) -> tuple[Path, Path, Path]:
-    checkpoint_dir = run_dir / CHECKPOINT_DIR_NAME
-    checkpoint_dir.mkdir(parents=True, exist_ok=True)
-    counts_path = checkpoint_dir / COUNTS_SNAPSHOT_NAME
-    progress_path = checkpoint_dir / PROGRESS_NAME
-    return checkpoint_dir, counts_path, progress_path
-
-
-def _save_stage1_checkpoint(
-    counts_path: Path,
-    progress_path: Path,
-    piece_counts: Counter[bytes],
-    progress: dict[str, Any],
-) -> None:
-    snapshot_payload = {
-        "piece_counts": dict(piece_counts),
-        "config_hash": progress["config_hash"],
-        "pattern_hash": progress["pattern_hash"],
-        "timestamp": progress["timestamp"],
-    }
-    atomic_dump_pickle(counts_path, snapshot_payload)
-    atomic_dump_json(progress_path, progress)
-
-
-def _load_stage1_checkpoint(
-    counts_path: Path,
-    progress_path: Path,
-    config_hash: str,
-    pattern_hash: str,
-) -> tuple[Counter[bytes], dict[str, Any]] | None:
-    if not counts_path.exists() or not progress_path.exists():
-        return None
-    progress = json.loads(progress_path.read_text(encoding="utf-8"))
-    if progress.get("config_hash") != config_hash:
-        return None
-    if progress.get("pattern_hash") != pattern_hash:
-        return None
-
-    try:
-        snapshot = load_pickle_with_checksum(counts_path)
-    except Exception:
-        # Stage 1 snapshot does not require checksum sidecars; fallback to plain pickle load.
-        snapshot = None
-    if snapshot is None:
-        return None
-    if snapshot.get("config_hash") != config_hash:
-        return None
-    if snapshot.get("pattern_hash") != pattern_hash:
-        return None
-    piece_counts = Counter(snapshot.get("piece_counts", {}))
-    return piece_counts, progress
-
-
 def count_pieces(
     cfg: dict[str, Any],
     run_dir: Path,
@@ -189,47 +131,24 @@ def count_pieces(
     pattern_flags: int,
     pattern_hash: str,
     logger: logging.Logger,
-    resume: bool,
 ) -> tuple[Counter[bytes], dict[str, Any]]:
+    del run_dir, pattern_hash  # API compatibility; Stage 1 no longer writes run-local checkpoints.
+
     data_cfg = cfg["data"]
-    checkpoint_cfg = cfg["checkpointing"]
-    config_hash = cfg["meta"]["config_hash"]
 
     input_paths = _discover_input_files(data_cfg["input_paths"], data_cfg["input_format"])
     corpus_hash = _compute_corpus_fingerprint(input_paths)
 
-    checkpoint_dir, counts_path, progress_path = _checkpoint_paths(run_dir)
     piece_counts: Counter[bytes] = Counter()
-    progress = {
-        "files": [{"path": str(path), "byte_offset": 0, "done": False} for path in input_paths],
-        "total_lines_processed": 0,
-        "total_pieces_seen": 0,
-        "total_bytes_processed": 0,
-        "config_hash": config_hash,
-        "pattern_hash": pattern_hash,
-        "snapshot_id": 0,
-        "timestamp": int(time.time()),
-    }
-
-    if resume:
-        loaded = _load_stage1_checkpoint(counts_path, progress_path, config_hash, pattern_hash)
-        if loaded is not None:
-            piece_counts, loaded_progress = loaded
-            progress = loaded_progress
-            logger.info(
-                "Stage 1 resume loaded: lines=%s pieces=%s unique=%s",
-                progress["total_lines_processed"],
-                progress["total_pieces_seen"],
-                len(piece_counts),
-            )
+    total_lines_processed = 0
+    total_pieces_seen = 0
+    total_bytes_processed = 0
 
     max_lines = data_cfg["max_lines"]
     max_bytes = data_cfg["max_bytes"]
     num_workers = int(data_cfg["num_workers"])
     batch_lines = int(data_cfg["batch_lines"])
     max_unique_pieces = data_cfg["max_unique_pieces"]
-    snapshot_every_batches = int(checkpoint_cfg["stage1_snapshot_every_batches"])
-    snapshot_every_seconds = int(checkpoint_cfg["snapshot_every_seconds"])
 
     logger.info(
         "Stage 1 starting: files=%s workers=%s batch_lines=%s",
@@ -239,12 +158,11 @@ def count_pieces(
     )
 
     merged_batches = 0
-    last_snapshot_time = time.time()
 
     def should_stop() -> bool:
-        if max_lines is not None and progress["total_lines_processed"] >= int(max_lines):
+        if max_lines is not None and total_lines_processed >= int(max_lines):
             return True
-        if max_bytes is not None and progress["total_bytes_processed"] >= int(max_bytes):
+        if max_bytes is not None and total_bytes_processed >= int(max_bytes):
             return True
         return False
 
@@ -258,24 +176,13 @@ def count_pieces(
             int(cfg["bpe"]["max_piece_bytes"]),
         ),
     ) as executor:
-        for file_state in progress["files"]:
-            if file_state["done"]:
-                continue
+        for file_path in input_paths:
             if should_stop():
                 break
 
-            file_path = Path(file_state["path"])
             with _open_binary(file_path) as f:
-                offset = int(file_state["byte_offset"])
-                try:
-                    f.seek(offset)
-                except Exception:
-                    # For streams where seek is unsupported, restart from beginning.
-                    offset = 0
-                    file_state["byte_offset"] = 0
-
-                pending: dict[Future, tuple[int, int]] = {}
-                completed: dict[int, tuple[int, Counter[bytes], int]] = {}
+                pending: dict[Future, int] = {}
+                completed: dict[int, tuple[Counter[bytes], int]] = {}
                 reached_eof = False
                 next_batch_id = 0
                 next_batch_to_merge = 0
@@ -298,8 +205,8 @@ def count_pieces(
                             )
                             if text:
                                 batch.append(text)
-                            progress["total_lines_processed"] += 1
-                            progress["total_bytes_processed"] += len(raw)
+                            total_lines_processed += 1
+                            total_bytes_processed += len(raw)
                             if should_stop():
                                 break
 
@@ -307,9 +214,8 @@ def count_pieces(
                             reached_eof = True
                             break
 
-                        end_offset = f.tell()
                         future = executor.submit(_worker_count_batch, batch)
-                        pending[future] = (next_batch_id, end_offset)
+                        pending[future] = next_batch_id
                         next_batch_id += 1
                         if should_stop():
                             break
@@ -319,63 +225,44 @@ def count_pieces(
 
                     done, _ = wait(set(pending.keys()), return_when=FIRST_COMPLETED)
                     for done_future in done:
-                        batch_id, end_offset = pending.pop(done_future)
+                        batch_id = pending.pop(done_future)
                         local_counter, local_pieces = done_future.result()
-                        completed[batch_id] = (end_offset, local_counter, int(local_pieces))
+                        completed[batch_id] = (local_counter, int(local_pieces))
 
                     while next_batch_to_merge in completed:
-                        end_offset, local_counter, local_pieces = completed.pop(next_batch_to_merge)
+                        local_counter, local_pieces = completed.pop(next_batch_to_merge)
                         next_batch_to_merge += 1
 
                         piece_counts.update(local_counter)
-                        progress["total_pieces_seen"] += local_pieces
-                        file_state["byte_offset"] = end_offset
+                        total_pieces_seen += local_pieces
                         merged_batches += 1
 
                         # Keep a single deterministic approximation knob in Stage 1:
                         # optional top-K capping by absolute count.
-                        if (
-                            max_unique_pieces is not None
-                            and merged_batches % 100 == 0
-                            and progress["total_lines_processed"] >= 10000
-                        ):
+                        if max_unique_pieces is not None and merged_batches % 100 == 0 and total_lines_processed >= 10000:
                             piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
 
-                        now = time.time()
-                        if (
-                            merged_batches % snapshot_every_batches == 0
-                            or (now - last_snapshot_time) >= snapshot_every_seconds
-                        ):
-                            progress["snapshot_id"] += 1
-                            progress["timestamp"] = int(now)
-                            _save_stage1_checkpoint(counts_path, progress_path, piece_counts, progress)
-                            last_snapshot_time = now
+                        if merged_batches % STAGE1_LOG_EVERY_BATCHES == 0:
                             logger.info(
-                                "Stage 1 checkpoint: lines=%s pieces=%s unique=%s",
-                                progress["total_lines_processed"],
-                                progress["total_pieces_seen"],
+                                "Stage 1 progress: lines=%s pieces=%s unique=%s",
+                                total_lines_processed,
+                                total_pieces_seen,
                                 len(piece_counts),
                             )
 
-                if reached_eof and not should_stop():
-                    file_state["done"] = True
-
     if max_unique_pieces is not None:
         piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
-    progress["snapshot_id"] += 1
-    progress["timestamp"] = int(time.time())
-    _save_stage1_checkpoint(counts_path, progress_path, piece_counts, progress)
 
     logger.info(
         "Stage 1 complete: lines=%s pieces=%s unique=%s",
-        progress["total_lines_processed"],
-        progress["total_pieces_seen"],
+        total_lines_processed,
+        total_pieces_seen,
         len(piece_counts),
     )
 
     metadata = {
-        "total_lines_processed": progress["total_lines_processed"],
-        "total_pieces_seen": progress["total_pieces_seen"],
+        "total_lines_processed": total_lines_processed,
+        "total_pieces_seen": total_pieces_seen,
         "training_corpus_sha256": corpus_hash,
     }
     return piece_counts, metadata

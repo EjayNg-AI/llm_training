@@ -14,6 +14,92 @@ Format:
 
 ## Unreleased
 
+### 2026-02-27 (Tokenizer Stage 03 checkpoint/memory telemetry removal + minimal run artifacts)
+
+Summary:
+
+1. Removed tokenizer checkpoint engineering from Stage 03:
+   - Stage 1 persisted checkpoints removed
+   - Stage 3 WAL/snapshot recovery removed
+   - Stage 03 resume mode removed
+2. Removed tokenizer memory monitoring.
+3. Kept duration reporting and simplified `training_telemetry.json` to timestamp + elapsed fields only.
+4. Removed non-essential Stage 03 intermediate run artifacts:
+   - run metadata/state/metrics/log files
+   - run-local export manifest mirror
+5. Added Stage 03 integration coverage for minimal run outputs and duration telemetry schema.
+
+Impacted files/modules:
+
+1. `scripts/03_train_tokenizer.py`
+2. `scripts/tokenizer_bpe/stage1_count.py`
+3. `scripts/tokenizer_bpe/stage3_train.py`
+4. `scripts/tokenizer_bpe/export.py`
+5. `scripts/tokenizer_bpe/config.py`
+6. `configs/tokenizer_bpe.yaml`
+7. `configs/tokenizer_bpe_owt_32k.yaml`
+8. `tests/tokenizer_bpe/helpers.py`
+9. `tests/tokenizer_bpe/test_stage03_minimal_outputs.py`
+10. `tests/tokenizer_bpe/test_stage1_count_unit.py`
+11. `tests/tokenizer_bpe/test_stage3_core.py`
+12. `tests/tokenizer_bpe/test_export.py`
+13. `tests/tokenizer_bpe/test_train_tokenizer_resume.py` (removed)
+14. `tests/tokenizer_bpe/test_stage3_recovery.py` (removed)
+15. `tests/tokenizer_bpe/test_config.py`
+16. `scripts/02_train_tokenizer.py`
+17. `README.md`
+18. `docs/TOKENIZER_BPE.md`
+19. `docs/IMPLEMENTED_STEPS.md`
+20. `docs/README.md`
+21. `CONFIG.md`
+22. `CHECKPOINTING.md`
+23. `docs/DIRECTORY_STRUCTURE.md`
+24. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe` passed (`36 passed`).
+
+Documentation updates:
+
+1. Updated tokenizer docs to reflect no-resume/no-checkpoint workflow.
+2. Updated Stage 03 behavior summary and runtime commands.
+3. Updated config/checkpoint reference docs.
+
+### 2026-02-26 (Tokenizer training telemetry + OpenWebText 32k config)
+
+Summary:
+
+1. Added lightweight Stage 03 runtime telemetry that records full-run start/end timestamps, elapsed seconds, and approximate peak process memory usage.
+2. Emitted telemetry to run-local `training_telemetry.json` without changing exported deterministic tokenizer artifact payloads.
+3. Added a dedicated OpenWebText tokenizer config targeting vocab size `32000`.
+4. Moved local OpenWebText training text into `data/raw/owt_train.txt` for canonical tokenizer input-path usage.
+5. Added unit tests for telemetry helpers and fallback behavior.
+
+Impacted files/modules:
+
+1. `scripts/03_train_tokenizer.py`
+2. `scripts/tokenizer_bpe/telemetry.py`
+3. `configs/tokenizer_bpe_owt_32k.yaml`
+4. `tests/tokenizer_bpe/test_telemetry.py`
+5. `README.md`
+6. `docs/TOKENIZER_BPE.md`
+7. `docs/IMPLEMENTED_STEPS.md`
+8. `docs/DIRECTORY_STRUCTURE.md`
+9. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_telemetry.py tests/tokenizer_bpe/test_stage3_core.py tests/tokenizer_bpe/test_export.py` passed (`13 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe/test_train_tokenizer_resume.py` passed (`2 passed`).
+
+Documentation updates:
+
+1. Added OpenWebText 32k tokenizer command example to `README.md`.
+2. Documented `training_telemetry.json` contract in `docs/TOKENIZER_BPE.md`.
+3. Updated Stage 03 behavior summary in `docs/IMPLEMENTED_STEPS.md`.
+4. Updated tracked structure snapshot for new config in `docs/DIRECTORY_STRUCTURE.md`.
+
 ### 2026-02-26 (Tokenizer BPE robustness/scaling feedback implementation)
 
 Summary:

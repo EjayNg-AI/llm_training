@@ -23,7 +23,6 @@ def write_test_config(
             "output_dir": str(output_dir),
             "seed": 0,
             "log_level": "INFO",
-            "structured_logs": False,
         },
         "data": {
             "input_paths": [str(corpus_path)],
@@ -55,13 +54,6 @@ def write_test_config(
             "tokens": ["<|endoftext|>", "<|pad|>"],
             "placement": "end",
         },
-        "checkpointing": {
-            "wal_fsync_each_commit": False,
-            "snapshot_every_merges": 1,
-            "snapshot_every_seconds": 999999,
-            "keep_last_snapshots": 10,
-            "stage1_snapshot_every_batches": 1,
-        },
     }
     cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
     return cfg
@@ -72,7 +64,6 @@ def run_train(
     cfg_path: Path,
     run_id: str,
     export_dir: Path,
-    resume: bool = False,
     stop_after_merges: int | None = None,
 ) -> None:
     # Integration tests run the full pipeline in-process because the sandbox
@@ -89,12 +80,8 @@ def run_train(
 
     cfg = load_config(cfg_path)
     run_dir = Path(cfg["run"]["output_dir"]) / run_id
-    if resume:
-        if not run_dir.exists():
-            raise FileNotFoundError(f"Run directory does not exist for resume: {run_dir}")
-    else:
-        if run_dir.exists() and any(run_dir.iterdir()):
-            raise FileExistsError(f"Run directory already exists and is not empty: {run_dir}")
+    if run_dir.exists() and any(run_dir.iterdir()):
+        raise FileExistsError(f"Run directory already exists and is not empty: {run_dir}")
 
     logger = logging.getLogger(f"tests.tokenizer_bpe.integration.{run_id}")
     logger.handlers.clear()
@@ -120,7 +107,6 @@ def run_train(
             pattern_flags=pattern_flags,
             pattern_hash=pattern_hash,
             logger=logger,
-            resume=resume,
         )
     finally:
         stage1_count_module.ProcessPoolExecutor = original_executor
@@ -133,7 +119,6 @@ def run_train(
         logger=logger,
         config_hash=cfg["meta"]["config_hash"],
         pattern_hash=pattern_hash,
-        resume=resume,
         stop_after_merges=stop_after_merges,
     )
     export_tokenizer(

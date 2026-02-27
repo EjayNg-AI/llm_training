@@ -117,3 +117,4 @@ def test_export_writes_merges_header_and_stats(tmp_path, tokenizer_logger):
     stats = json.loads((export_dir / "training_stats.json").read_text(encoding="utf-8"))
     assert stats["final_merge_index"] == 1
     assert stats["num_merges"] == 1
+    assert not (run_dir / "export_manifest.json").exists()

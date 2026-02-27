@@ -1,11 +1,13 @@
-"""Train and export a resumable GPT-2 style byte-level BPE tokenizer."""
+"""Train and export a GPT-2 style byte-level BPE tokenizer."""
 
 from __future__ import annotations
 
 import argparse
-import json
+from datetime import datetime, timezone
 import logging
 from pathlib import Path
+import subprocess
+import time
 from typing import Any
 
 from _bootstrap import ensure_src_on_path
@@ -19,28 +21,40 @@ from llm_training.infra.manifest import (
     publish_artifact,
     resolve_artifact_dir,
 )
-from llm_training.infra.run_dir import begin_run, end_run, make_run_context
 
 from tokenizer_bpe.config import build_pattern_hash, load_config
 from tokenizer_bpe.export import export_tokenizer
+from tokenizer_bpe.io_atomic import atomic_dump_json
 from tokenizer_bpe.pretokenizer import resolve_pattern
 from tokenizer_bpe.stage1_count import count_pieces
 from tokenizer_bpe.stage2_init import initialize_training_state
 from tokenizer_bpe.stage3_train import train_bpe
 
 
-class JsonlFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord) -> str:
-        payload = {
-            "timestamp": self.formatTime(record, self.datefmt),
-            "level": record.levelname,
-            "name": record.name,
-            "message": record.getMessage(),
-        }
-        return json.dumps(payload, ensure_ascii=False)
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def _setup_logging(run_dir: Path, cfg: dict[str, Any]) -> logging.Logger:
+def _resolve_run_id(explicit_run_id: str | None) -> str:
+    if explicit_run_id:
+        return explicit_run_id
+    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+
+def _safe_git_commit() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+    except Exception:
+        return None
+
+
+def _setup_logging(cfg: dict[str, Any]) -> logging.Logger:
     logger = logging.getLogger("tokenizer_bpe")
     logger.handlers.clear()
     logger.setLevel(getattr(logging, cfg["run"]["log_level"], logging.INFO))
@@ -49,18 +63,6 @@ def _setup_logging(run_dir: Path, cfg: dict[str, Any]) -> logging.Logger:
     console = logging.StreamHandler()
     console.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger.addHandler(console)
-
-    run_dir.mkdir(parents=True, exist_ok=True)
-
-    file_handler = logging.FileHandler(run_dir / "train.log", encoding="utf-8")
-    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    logger.addHandler(file_handler)
-
-    if cfg["run"]["structured_logs"]:
-        json_handler = logging.FileHandler(run_dir / "train.jsonl", encoding="utf-8")
-        json_handler.setFormatter(JsonlFormatter())
-        logger.addHandler(json_handler)
-
     return logger
 
 
@@ -72,20 +74,15 @@ def parse_args() -> argparse.Namespace:
         help="Path to tokenizer training config YAML.",
     )
     parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Resume from existing checkpoints and WAL in the selected run directory.",
-    )
-    parser.add_argument(
         "--run-id",
         default=None,
-        help="Run identifier under run.output_dir. Required for deterministic resume targeting.",
+        help="Run identifier under run.output_dir.",
     )
     parser.add_argument(
         "--stop-after-merges",
         type=int,
         default=None,
-        help="Optional absolute merge index at which to stop early (debug/recovery testing).",
+        help="Optional absolute merge index at which to stop early (debug/testing).",
     )
     parser.add_argument(
         "--artifact-id",
@@ -104,141 +101,130 @@ def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
 
-    run_ctx = make_run_context(
-        stage_name="03_train_tokenizer",
-        run_output_dir=Path(cfg["run"]["output_dir"]),
-        config={k: v for k, v in cfg.items() if k != "meta"},
-        run_id=args.run_id,
-    )
-    run_dir = run_ctx.run_dir
+    run_id = _resolve_run_id(args.run_id)
+    run_dir = Path(cfg["run"]["output_dir"]) / run_id
+    if run_dir.exists() and any(run_dir.iterdir()):
+        raise FileExistsError(
+            f"Run directory already exists and is not empty: {run_dir}\n"
+            "Pass a different --run-id."
+        )
+    run_dir.mkdir(parents=True, exist_ok=True)
 
-    if args.resume:
-        if not any(run_dir.iterdir()):
-            raise FileNotFoundError(f"Run directory is empty for resume: {run_dir}")
-    else:
-        if run_dir.exists() and any(run_dir.iterdir()):
-            raise FileExistsError(
-                f"Run directory already exists and is not empty: {run_dir}\n"
-                "Use --resume or pass a different --run-id."
-            )
-
-    begin_run(
-        run_ctx,
-        config_path=str(Path(args.config).resolve()),
-        inputs={"input_paths": cfg["data"]["input_paths"]},
-    )
-
-    logger = _setup_logging(run_dir, cfg)
+    logger = _setup_logging(cfg)
     logger.info("Run directory: %s", run_dir)
     logger.info("Config hash: %s", cfg["meta"]["config_hash"])
 
-    pattern_alias, pattern_str, pattern_flags, regex_version = resolve_pattern(cfg["pretokenizer"])
-    pattern_hash = build_pattern_hash(
-        pattern_str=pattern_str,
-        pattern_flags=pattern_flags,
-        normalize=cfg["data"]["normalize"],
-        regex_version=regex_version,
-    )
-    logger.info(
-        "Pretokenizer alias=%s regex_version=%s pattern_hash=%s",
-        pattern_alias,
-        regex_version,
-        pattern_hash,
-    )
+    training_started_at = _utc_now_iso()
+    timer_start = time.perf_counter()
 
-    piece_counts, stage1_meta = count_pieces(
-        cfg=cfg,
-        run_dir=run_dir,
-        pattern_str=pattern_str,
-        pattern_flags=pattern_flags,
-        pattern_hash=pattern_hash,
-        logger=logger,
-        resume=args.resume,
-    )
-
-    init_state = initialize_training_state(piece_counts=piece_counts, cfg=cfg, logger=logger)
-
-    train_state = train_bpe(
-        cfg=cfg,
-        run_dir=run_dir,
-        initial_state=init_state,
-        logger=logger,
-        config_hash=cfg["meta"]["config_hash"],
-        pattern_hash=pattern_hash,
-        resume=args.resume,
-        stop_after_merges=args.stop_after_merges,
-    )
-
-    source_signature = stable_hash_object(
-        {
-            "config_hash": cfg["meta"]["config_hash"],
-            "pattern_hash": pattern_hash,
-            "corpus_hash": stage1_meta["training_corpus_sha256"],
-            "vocab_size": cfg["bpe"]["vocab_size"],
-            "special_tokens": cfg["special_tokens"]["tokens"],
-        }
-    )
-    artifact_id = args.artifact_id or f"tokenizer_{source_signature[:12]}"
-
-    artifacts_root = Path(args.artifacts_root)
-    export_dir = resolve_artifact_dir(artifacts_root, "tokenizer", artifact_id)
-    if export_dir.exists() and any(export_dir.iterdir()):
-        raise FileExistsError(
-            f"Tokenizer artifact already exists: {export_dir}. "
-            "Pass --artifact-id with a new value if you need another export."
+    try:
+        pattern_alias, pattern_str, pattern_flags, regex_version = resolve_pattern(cfg["pretokenizer"])
+        pattern_hash = build_pattern_hash(
+            pattern_str=pattern_str,
+            pattern_flags=pattern_flags,
+            normalize=cfg["data"]["normalize"],
+            regex_version=regex_version,
+        )
+        logger.info(
+            "Pretokenizer alias=%s regex_version=%s pattern_hash=%s",
+            pattern_alias,
+            regex_version,
+            pattern_hash,
         )
 
-    export_tokenizer(
-        cfg=cfg,
-        run_dir=run_dir,
-        export_dir=export_dir,
-        train_state=train_state,
-        pattern_alias=pattern_alias,
-        pattern_str=pattern_str,
-        pattern_flags=pattern_flags,
-        pattern_hash=pattern_hash,
-        config_hash=cfg["meta"]["config_hash"],
-        corpus_hash=stage1_meta["training_corpus_sha256"],
-        logger=logger,
-    )
+        piece_counts, stage1_meta = count_pieces(
+            cfg=cfg,
+            run_dir=run_dir,
+            pattern_str=pattern_str,
+            pattern_flags=pattern_flags,
+            pattern_hash=pattern_hash,
+            logger=logger,
+        )
 
-    checksums = collect_checksums(export_dir)
-    run_meta = json.loads(run_ctx.run_meta_path.read_text(encoding="utf-8"))
-    manifest = build_artifact_manifest(
-        artifact_type="tokenizer",
-        artifact_id=artifact_id,
-        source_run_id=run_ctx.run_id,
-        config_hash=cfg["meta"]["config_hash"],
-        git_commit=run_meta.get("git_commit"),
-        inputs=[
+        init_state = initialize_training_state(piece_counts=piece_counts, cfg=cfg, logger=logger)
+
+        train_state = train_bpe(
+            cfg=cfg,
+            run_dir=run_dir,
+            initial_state=init_state,
+            logger=logger,
+            config_hash=cfg["meta"]["config_hash"],
+            pattern_hash=pattern_hash,
+            stop_after_merges=args.stop_after_merges,
+        )
+
+        source_signature = stable_hash_object(
             {
-                "artifact_type": "raw_files",
-                "artifact_id": "training_corpus",
-                "hash": stage1_meta["training_corpus_sha256"],
+                "config_hash": cfg["meta"]["config_hash"],
+                "pattern_hash": pattern_hash,
+                "corpus_hash": stage1_meta["training_corpus_sha256"],
+                "vocab_size": cfg["bpe"]["vocab_size"],
+                "special_tokens": cfg["special_tokens"]["tokens"],
             }
-        ],
-        stats={
-            "pattern_alias": pattern_alias,
-            "pattern_hash": pattern_hash,
-            "training_corpus_sha256": stage1_meta["training_corpus_sha256"],
-            "vocab_size": len(train_state["id_to_token_bytes"]) + len(cfg["special_tokens"]["tokens"]),
-            "num_merges": len(train_state["merge_pairs"]),
-            "export_dir": str(export_dir),
-        },
-        checksums=checksums,
-    )
-    publish_artifact(artifacts_root=artifacts_root, artifact_dir=export_dir, manifest=manifest)
+        )
+        artifact_id = args.artifact_id or f"tokenizer_{source_signature[:12]}"
 
-    end_run(
-        run_ctx,
-        status="completed",
-        summary={
-            "artifact_id": artifact_id,
-            "num_merges": len(train_state["merge_pairs"]),
-            "training_corpus_sha256": stage1_meta["training_corpus_sha256"],
-        },
-    )
-    logger.info("Tokenizer export complete: %s (artifact_id=%s)", export_dir, artifact_id)
+        artifacts_root = Path(args.artifacts_root)
+        export_dir = resolve_artifact_dir(artifacts_root, "tokenizer", artifact_id)
+        if export_dir.exists() and any(export_dir.iterdir()):
+            raise FileExistsError(
+                f"Tokenizer artifact already exists: {export_dir}. "
+                "Pass --artifact-id with a new value if you need another export."
+            )
+
+        export_tokenizer(
+            cfg=cfg,
+            run_dir=run_dir,
+            export_dir=export_dir,
+            train_state=train_state,
+            pattern_alias=pattern_alias,
+            pattern_str=pattern_str,
+            pattern_flags=pattern_flags,
+            pattern_hash=pattern_hash,
+            config_hash=cfg["meta"]["config_hash"],
+            corpus_hash=stage1_meta["training_corpus_sha256"],
+            logger=logger,
+        )
+
+        checksums = collect_checksums(export_dir)
+        manifest = build_artifact_manifest(
+            artifact_type="tokenizer",
+            artifact_id=artifact_id,
+            source_run_id=run_id,
+            config_hash=cfg["meta"]["config_hash"],
+            git_commit=_safe_git_commit(),
+            inputs=[
+                {
+                    "artifact_type": "raw_files",
+                    "artifact_id": "training_corpus",
+                    "hash": stage1_meta["training_corpus_sha256"],
+                }
+            ],
+            stats={
+                "pattern_alias": pattern_alias,
+                "pattern_hash": pattern_hash,
+                "training_corpus_sha256": stage1_meta["training_corpus_sha256"],
+                "vocab_size": len(train_state["id_to_token_bytes"]) + len(cfg["special_tokens"]["tokens"]),
+                "num_merges": len(train_state["merge_pairs"]),
+                "export_dir": str(export_dir),
+                "elapsed_seconds": max(0.0, time.perf_counter() - timer_start),
+            },
+            checksums=checksums,
+        )
+        publish_artifact(artifacts_root=artifacts_root, artifact_dir=export_dir, manifest=manifest)
+        logger.info("Tokenizer export complete: %s (artifact_id=%s)", export_dir, artifact_id)
+    finally:
+        training_ended_at = _utc_now_iso()
+        elapsed_seconds = max(0.0, time.perf_counter() - timer_start)
+        atomic_dump_json(
+            run_dir / "training_telemetry.json",
+            {
+                "training_started_at": training_started_at,
+                "training_ended_at": training_ended_at,
+                "elapsed_seconds": elapsed_seconds,
+            },
+        )
+        logger.info("Training duration: elapsed_seconds=%.3f", elapsed_seconds)
 
 
 if __name__ == "__main__":

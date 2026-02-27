@@ -5,7 +5,7 @@ run:
 
 data:
   input_paths:
-    - "data/raw/train.txt"
+    - "data/raw/owt_train.txt"
   input_format: "text"
   jsonl_text_field: "text"
   decode_errors: "replace"
@@ -23,7 +23,7 @@ pretokenizer:
   flags: []
 
 bpe:
-  vocab_size: 50000
+  vocab_size: 32000
   min_merge_freq: 2
   max_merges: null
   max_word_types: 1500000

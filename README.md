@@ -26,14 +26,14 @@ It remains laptop-runnable and now includes deterministic artifact-ID based stag
 
 1. `scripts/01_build_corpus.py`: raw text/jsonl -> canonical document corpus artifact.
 2. `scripts/02_dedup_exact.py`: deterministic exact deduplication over corpus docs.
-3. `scripts/03_train_tokenizer.py`: deterministic resumable GPT-2 style byte-level BPE training + published tokenizer artifact.
+3. `scripts/03_train_tokenizer.py`: deterministic GPT-2 style byte-level BPE training + published tokenizer artifact.
 4. `scripts/04_tokenize_corpus.py`: corpus docs -> deterministic token shards with per-doc offsets.
 5. `scripts/05_pack_sequences.py`: token shards -> fixed-length train/val packed blocks.
 6. `scripts/06_pretrain.py`: tiny GPT-style pretraining from packed artifacts with checkpoint resume.
 7. `scripts/07_sft_lora.py`: lightweight LoRA SFT over a published base model artifact.
 8. `scripts/08_eval.py`: perplexity/sample evaluation producing versioned eval artifacts.
 
-Shared contracts now applied across new stages:
+Shared contracts now applied across most canonical stages:
 
 1. run directory metadata (`run_meta.json`, `state.json`, `metrics.jsonl`)
 2. artifact manifests (`artifact_manifest.json`)
@@ -91,11 +91,20 @@ python scripts/07_sft_lora.py --config configs/sft.yaml
 python scripts/08_eval.py --config configs/eval.yaml
 ```
 
-### 5) Resume tokenizer training after interruption (optional)
+### 5) Train tokenizer on OpenWebText subsample with 32k vocab (optional)
 
 ```bash
-python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
+mkdir -p data/raw
+mv owt_train.txt data/raw/owt_train.txt
+python scripts/03_train_tokenizer.py \
+  --config configs/tokenizer_bpe_owt_32k.yaml \
+  --run-id owt32k_run01 \
+  --artifact-id tokenizer_owt_32k_run01
 ```
+
+Telemetry for elapsed runtime is written to:
+
+- `artifacts/tokenizer/runs/<run_id>/training_telemetry.json`
 
 ### 6) Run tests
 

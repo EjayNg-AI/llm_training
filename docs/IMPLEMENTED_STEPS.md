@@ -57,7 +57,7 @@ Artifacts:
 
 Purpose:
 
-1. Train and export deterministic, resumable GPT-2 style UTF-8 byte-level BPE tokenizer artifacts.
+1. Train and export deterministic GPT-2 style UTF-8 byte-level BPE tokenizer artifacts.
 
 Current behavior:
 
@@ -65,11 +65,11 @@ Current behavior:
    - regex pretokenization
    - Stage 1 multiprocessing piece counting with out-of-order worker completion and deterministic in-order merge application
    - Stage 2/3 compact integer-array state (`array('H'/'I')` words + array-backed freqs)
-   - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`), heap pressure controls, and WAL + snapshot recovery
-   - Stage 3 PoC durability defaults (periodic fsync with paranoid per-commit option)
+   - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`) and heap pressure controls
    - deterministic merge/export behavior
-2. Publishes tokenizer artifacts by artifact ID under `artifacts/tokenizer/exports/<tokenizer_id>/`.
-3. Registers tokenizer artifact with manifest and lineage metadata.
+2. Writes lightweight Stage 03 duration telemetry to the run directory with start/end timestamps and elapsed seconds.
+3. Publishes tokenizer artifacts by artifact ID under `artifacts/tokenizer/exports/<tokenizer_id>/`.
+4. Registers tokenizer artifact with manifest and lineage metadata.
 
 Artifacts:
 
@@ -80,10 +80,9 @@ Artifacts:
 5. `training_stats.json`
 6. `artifact_manifest.json`
 
-Resume contract:
+Run outputs:
 
-1. `--resume --run-id <run_id>` reuses existing run directory.
-2. Existing tokenizer WAL/snapshot integrity checks still apply.
+1. `artifacts/tokenizer/runs/<run_id>/training_telemetry.json`
 
 ## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
 
@@ -245,10 +244,6 @@ Canonical flow:
 6. `python scripts/06_pretrain.py --config configs/train.yaml`
 7. `python scripts/07_sft_lora.py --config configs/sft.yaml`
 8. `python scripts/08_eval.py --config configs/eval.yaml`
-
-Tokenizer resume:
-
-1. `python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>`
 
 Tests:
 

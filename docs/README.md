@@ -25,7 +25,7 @@ Related docs outside `docs/`:
 - `README.md`: public onboarding and quick start.
 - `AGENTS.md`: operating rules for Codex and repository contributors.
 - `CONFIG.md`: tokenizer config reference.
-- `CHECKPOINTING.md`: tokenizer checkpoint/WAL recovery model.
+- `CHECKPOINTING.md`: tokenizer checkpointing note (Stage 03 currently has no checkpoint/recovery path).
 
 ## Update policy
 

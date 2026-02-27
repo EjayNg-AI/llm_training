@@ -5,9 +5,7 @@ from collections import Counter
 from tokenizer_bpe.stage1_count import (
     _discover_input_files,
     _extract_text,
-    _load_stage1_checkpoint,
     _prune_counter,
-    _save_stage1_checkpoint,
 )
 
 
@@ -50,45 +48,3 @@ def test_prune_counter_min_freq_and_top_k_tie_break():
     counter = Counter({b"b": 5, b"a": 5, b"c": 1})
     pruned = _prune_counter(counter, min_piece_freq=2, max_unique_pieces=1)
     assert pruned == Counter({b"a": 5})
-
-
-def test_load_stage1_checkpoint_rejects_hash_mismatch(tmp_path):
-    counts_path = tmp_path / "word_counts.snapshot.pkl"
-    progress_path = tmp_path / "word_counts.progress.json"
-    counts = Counter({b"hello": 3})
-    progress = {
-        "files": [],
-        "total_lines_processed": 1,
-        "total_pieces_seen": 3,
-        "total_bytes_processed": 10,
-        "config_hash": "cfg-a",
-        "pattern_hash": "pat-a",
-        "snapshot_id": 1,
-        "timestamp": 1,
-    }
-    _save_stage1_checkpoint(counts_path, progress_path, counts, progress)
-
-    assert _load_stage1_checkpoint(counts_path, progress_path, "cfg-b", "pat-a") is None
-    assert _load_stage1_checkpoint(counts_path, progress_path, "cfg-a", "pat-b") is None
-
-
-def test_load_stage1_checkpoint_round_trip(tmp_path):
-    counts_path = tmp_path / "word_counts.snapshot.pkl"
-    progress_path = tmp_path / "word_counts.progress.json"
-    counts = Counter({b"hello": 3, b"world": 2})
-    progress = {
-        "files": [],
-        "total_lines_processed": 2,
-        "total_pieces_seen": 5,
-        "total_bytes_processed": 22,
-        "config_hash": "cfg",
-        "pattern_hash": "pat",
-        "snapshot_id": 2,
-        "timestamp": 42,
-    }
-    _save_stage1_checkpoint(counts_path, progress_path, counts, progress)
-    loaded = _load_stage1_checkpoint(counts_path, progress_path, "cfg", "pat")
-    assert loaded is not None
-    loaded_counts, loaded_progress = loaded
-    assert loaded_counts == counts
-    assert loaded_progress["snapshot_id"] == 2

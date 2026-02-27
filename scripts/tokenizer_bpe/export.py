@@ -112,9 +112,6 @@ def export_tokenizer(
     atomic_dump_json(export_dir / "tokenizer_config.json", tokenizer_config)
     atomic_dump_json(export_dir / "special_tokens_map.json", special_map)
     atomic_dump_json(export_dir / "training_stats.json", training_stats)
-
-    # Mirror a compact metadata view into the run directory.
-    atomic_dump_json(run_dir / "export_manifest.json", {"export_dir": str(export_dir), **training_stats})
+    _ = run_dir  # Preserve signature compatibility without writing run-local files.
 
     logger.info("Exported vocab size=%s merges=%s", len(vocab), len(merge_pairs))
-

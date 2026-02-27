@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from array import array
 
-import pytest
-
 from tokenizer_bpe.stage3_train import (
     _build_pair_structures,
     _pop_best_pair,
@@ -23,13 +21,6 @@ def _minimal_cfg() -> dict:
             "min_merge_freq": 2,
         },
         "special_tokens": {"tokens": ["<|endoftext|>", "<|pad|>"]},
-        "checkpointing": {
-            "wal_fsync_each_commit": False,
-            "wal_fsync_every_commits": 0,
-            "snapshot_every_merges": 1,
-            "snapshot_every_seconds": 999999,
-            "keep_last_snapshots": 2,
-        },
     }
 
 
@@ -56,30 +47,21 @@ def test_heap_pop_best_pair_uses_lexicographic_tie_break():
     assert _pop_best_pair(heap, pair_count) == (1, 2, 2)
 
 
-def test_train_bpe_resume_rejects_wal_new_id_mismatch(tmp_path, tokenizer_logger):
-    run_dir = tmp_path / "run"
-    run_dir.mkdir(parents=True, exist_ok=True)
-    wal_path = run_dir / "merges.wal"
-    wal_path.write_text(
-        "BEGIN\t1\t1\t2\t10\n"
-        "COMMIT\t1\t999\n",
-        encoding="utf-8",
-    )
-
+def test_train_bpe_respects_stop_after_merges(tmp_path, tokenizer_logger):
     initial_state = {
         "words": [[1, 2, 1, 2]],
         "freqs": [10],
         "id_to_token_bytes": [bytes([i]) for i in range(256)],
     }
-
-    with pytest.raises(ValueError, match="WAL new_id mismatch"):
-        train_bpe(
-            cfg=_minimal_cfg(),
-            run_dir=run_dir,
-            initial_state=initial_state,
-            logger=tokenizer_logger,
-            config_hash="cfg",
-            pattern_hash="pat",
-            resume=True,
-            stop_after_merges=None,
-        )
+    train_state = train_bpe(
+        cfg=_minimal_cfg(),
+        run_dir=tmp_path / "run",
+        initial_state=initial_state,
+        logger=tokenizer_logger,
+        config_hash="cfg",
+        pattern_hash="pat",
+        stop_after_merges=1,
+    )
+    assert train_state["last_merge"] == 1
+    assert len(train_state["merge_pairs"]) == 1
+    assert len(train_state["id_to_token_bytes"]) == 257

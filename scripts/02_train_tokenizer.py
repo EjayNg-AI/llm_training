@@ -1,4 +1,4 @@
-"""Train and export a resumable GPT-2 style byte-level BPE tokenizer."""
+"""Train and export a GPT-2 style byte-level BPE tokenizer."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def _setup_logging(run_dir: Path, cfg: dict[str, Any]) -> logging.Logger:
     file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger.addHandler(file_handler)
 
-    if cfg["run"]["structured_logs"]:
+    if bool(cfg["run"].get("structured_logs", False)):
         json_handler = logging.FileHandler(run_dir / "train.jsonl", encoding="utf-8")
         json_handler.setFormatter(JsonlFormatter())
         logger.addHandler(json_handler)
@@ -66,14 +66,9 @@ def parse_args() -> argparse.Namespace:
         help="Path to tokenizer training config YAML.",
     )
     parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Resume from existing checkpoints and WAL in the selected run directory.",
-    )
-    parser.add_argument(
         "--run-id",
         default=None,
-        help="Run identifier under run.output_dir. Required for deterministic resume targeting.",
+        help="Run identifier under run.output_dir.",
     )
     parser.add_argument(
         "--stop-after-merges",
@@ -94,15 +89,11 @@ def main() -> None:
     cfg = load_config(args.config)
     run_dir = _resolve_run_dir(cfg, args.run_id)
 
-    if args.resume:
-        if not run_dir.exists():
-            raise FileNotFoundError(f"Run directory does not exist for resume: {run_dir}")
-    else:
-        if run_dir.exists() and any(run_dir.iterdir()):
-            raise FileExistsError(
-                f"Run directory already exists and is not empty: {run_dir}\n"
-                "Use --resume or pass a different --run-id."
-            )
+    if run_dir.exists() and any(run_dir.iterdir()):
+        raise FileExistsError(
+            f"Run directory already exists and is not empty: {run_dir}\n"
+            "Pass a different --run-id."
+        )
 
     logger = _setup_logging(run_dir, cfg)
     logger.info("Run directory: %s", run_dir)
@@ -129,7 +120,6 @@ def main() -> None:
         pattern_flags=pattern_flags,
         pattern_hash=pattern_hash,
         logger=logger,
-        resume=args.resume,
     )
 
     init_state = initialize_training_state(piece_counts=piece_counts, cfg=cfg, logger=logger)
@@ -141,7 +131,6 @@ def main() -> None:
         logger=logger,
         config_hash=cfg["meta"]["config_hash"],
         pattern_hash=pattern_hash,
-        resume=args.resume,
         stop_after_merges=args.stop_after_merges,
     )
 

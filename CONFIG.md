@@ -1,88 +1,56 @@
 # Tokenizer Config Reference
 
-The tokenizer trainer uses one source-of-truth config file:
+The tokenizer trainer uses these config files:
 
-- `configs/tokenizer_bpe.yaml`
+1. `configs/tokenizer_bpe.yaml`
+2. `configs/tokenizer_bpe_owt_32k.yaml`
 
 ## Top-level sections
 
-- `run`: output location and logging configuration
-- `data`: corpus input settings and Stage 1 counting controls
-- `pretokenizer`: regex pattern family and regex flags
-- `bpe`: merge loop and vocabulary controls
-- `special_tokens`: reserved tokens appended at export
-- `checkpointing`: WAL and snapshot durability policy
+1. `run`: run directory and console log level
+2. `data`: corpus input and Stage 1 counting controls
+3. `pretokenizer`: regex pattern configuration
+4. `bpe`: merge-learning controls
+5. `special_tokens`: export-time special-token placement
+
+Tokenizer Stage 03 does not use a `checkpointing` config section.
 
 ## `run`
 
-- `output_dir`: root directory for run state (`artifacts/tokenizer/runs`)
-- `seed`: reserved for future randomized behaviors (currently deterministic path)
-- `log_level`: logging level (`INFO`, `DEBUG`, ...)
-- `structured_logs`: if true, writes JSONL logs in addition to text logs
+1. `output_dir`: root for per-run telemetry directory
+2. `seed`: reserved
+3. `log_level`: console log level
 
 ## `data`
 
-- `input_paths`: files/directories to scan
-- `input_format`: `text` or `jsonl`
-- `jsonl_text_field`: source field when `input_format=jsonl`
-- `decode_errors`: UTF-8 decode policy (`strict`, `replace`, `ignore`)
-- `normalize`: `none`, `NFC`, or `NFKC`
-- `max_bytes`: optional global cap on raw bytes read
-- `max_lines`: optional global cap on lines read
-- `num_workers`: Stage 1 worker process count
-- `batch_lines`: line batch size per worker task
-- `min_piece_freq`: low-frequency filtering threshold applied during Stage 2 inventory initialization
-- `max_unique_pieces`: optional deterministic top-K cap used as Stage 1 memory approximation control
+1. `input_paths`: files/directories to scan
+2. `input_format`: `text` or `jsonl`
+3. `jsonl_text_field`: source field when `input_format=jsonl`
+4. `decode_errors`: UTF-8 decode policy (`strict`, `replace`, `ignore`)
+5. `normalize`: `none`, `NFC`, or `NFKC`
+6. `max_bytes`: optional cap on raw bytes read
+7. `max_lines`: optional cap on lines read
+8. `num_workers`: Stage 1 worker process count
+9. `batch_lines`: line batch size per worker task
+10. `min_piece_freq`: low-frequency filter threshold used in Stage 2 inventory build
+11. `max_unique_pieces`: deterministic top-K cap for Stage 1 memory control
 
 ## `pretokenizer`
 
-- `pattern`:
-  - `gpt2_fast` (default; faster equivalent)
-  - `gpt2_default` (canonical GPT-2 release pattern)
-  - `custom` (requires `custom_pattern`)
-- `custom_pattern`: explicit regex when `pattern=custom`
-- `flags`: list of regex flags (`IGNORECASE`, `MULTILINE`)
-
-Resume safety:
-
-- Run state records `pattern_alias`, exact pattern string, flags, and `regex` module version.
-- A derived `pattern_hash` is enforced at resume time; mismatches fail fast.
-
-## Config hashing contract (`config_hash`)
-
-Tokenizer training computes `config_hash` from the merged config payload (defaults plus user overrides) before adding runtime metadata.
-
-Canonicalization is:
-
-1. Serialize with `json.dumps(cfg, sort_keys=True, separators=(",", ":"), ensure_ascii=False)`.
-2. Encode the serialized JSON as UTF-8.
-3. Compute SHA-256 over those bytes.
-
-Notes:
-
-- List order is preserved and contributes to hash identity.
-- No path normalization is applied; path strings are hashed as configured.
-- The normative implementation reference is `scripts/tokenizer_bpe/config.py` and the detailed algorithm contract is in `docs/TOKENIZER_BPE.md`.
+1. `pattern`: `gpt2_fast`, `gpt2_default`, or `custom`
+2. `custom_pattern`: required when `pattern=custom`
+3. `flags`: regex flags list
 
 ## `bpe`
 
-- `vocab_size`: target exported vocab size (base bytes + merges + specials)
-- `min_merge_freq`: stop training if best pair count drops below this threshold
-- `max_merges`: override merge count directly (if null, derived from `vocab_size`)
-- `max_word_types`: cap unique piece inventory after deterministic sorting
-- `max_piece_bytes`: drop unusually long pieces in Stage 1 worker path
-- `tie_break`: currently `lexicographic` only
+1. `vocab_size`: target exported vocab size (bytes + merges + specials)
+2. `min_merge_freq`: stop when best pair falls below threshold
+3. `max_merges`: direct merge-count override (if null, derived from `vocab_size`)
+4. `max_word_types`: cap unique piece inventory after deterministic sorting
+5. `max_piece_bytes`: drop overly long pieces in Stage 1 worker path
+6. `tie_break`: must be `lexicographic`
 
 ## `special_tokens`
 
-- `tokens`: ordered list of special token strings
-- `placement`: `end` (recommended) or `start` in exported vocab ID layout
-
-## `checkpointing`
-
-- `wal_fsync_each_commit`: paranoid mode; fsync WAL after each committed merge
-- `wal_fsync_every_commits`: fsync cadence when not in paranoid mode (`0` disables periodic fsync and relies on snapshot/final fsync)
-- `snapshot_every_merges`: Stage 3 snapshot interval in merges
-- `snapshot_every_seconds`: Stage 1/3 time-based checkpoint interval
-- `keep_last_snapshots`: number of recent Stage 3 snapshots to retain
-- `stage1_snapshot_every_batches`: Stage 1 snapshot interval by merged worker results
+1. `tokens`: ordered special-token list
+2. `placement`: `end` (recommended) or `start`
