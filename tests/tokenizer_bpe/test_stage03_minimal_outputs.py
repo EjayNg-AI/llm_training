@@ -24,7 +24,7 @@ def _load_stage03_module():
 
 
 @pytest.mark.integration
-def test_stage03_writes_only_duration_telemetry_in_run_dir(tmp_path, tiny_corpus_text):
+def test_stage03_writes_telemetry_statistics_and_report_outputs(tmp_path, tiny_corpus_text):
     corpus_path = tmp_path / "train.txt"
     corpus_path.write_text(tiny_corpus_text, encoding="utf-8")
 
@@ -36,6 +36,8 @@ def test_stage03_writes_only_duration_telemetry_in_run_dir(tmp_path, tiny_corpus
             "output_dir": str(runs_dir),
             "seed": 0,
             "log_level": "INFO",
+            "report_output_path": str(tmp_path / "docs" / "data_collection_report.md"),
+            "stage3_metrics_every_merges": 2,
         },
         "data": {
             "input_paths": [str(corpus_path)],
@@ -67,6 +69,14 @@ def test_stage03_writes_only_duration_telemetry_in_run_dir(tmp_path, tiny_corpus
             "tokens": ["<|endoftext|>", "<|pad|>"],
             "placement": "end",
         },
+        "checkpointing": {
+            "enabled": True,
+            "snapshot_every_merges": 2,
+            "wal_enabled": True,
+            "wal_fsync_every_commits": 2,
+            "wal_fsync_mode": "periodic",
+            "resume_mode": "off",
+        },
     }
     cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
 
@@ -95,11 +105,31 @@ def test_stage03_writes_only_duration_telemetry_in_run_dir(tmp_path, tiny_corpus
 
     run_dir = runs_dir / "run_a"
     run_files = sorted(path.name for path in run_dir.iterdir())
-    assert run_files == ["training_telemetry.json"]
+    assert "training_telemetry.json" in run_files
+    assert "run_statistics.json" in run_files
+    assert "merges.wal" in run_files
+    assert any(name.startswith("snapshot_") for name in run_files)
 
     telemetry = json.loads((run_dir / "training_telemetry.json").read_text(encoding="utf-8"))
-    assert set(telemetry.keys()) == {"training_started_at", "training_ended_at", "elapsed_seconds"}
+    assert {"training_started_at", "training_ended_at", "elapsed_seconds"} <= set(telemetry.keys())
+    assert "run_statistics_path" in telemetry
+    assert "report_path" in telemetry
     assert telemetry["elapsed_seconds"] >= 0
+
+    run_stats = json.loads((run_dir / "run_statistics.json").read_text(encoding="utf-8"))
+    assert "environment" in run_stats
+    assert "stage1" in run_stats
+    assert "stage2" in run_stats
+    assert "stage3" in run_stats
+    assert run_stats["stage1"]["total_pieces_seen"] >= 0
+    assert run_stats["stage2"]["word_types_kept"] >= 0
+    assert run_stats["stage3"]["merges_done"] >= 0
+
+    report_path = Path(telemetry["report_path"])
+    assert report_path.exists()
+    report_text = report_path.read_text(encoding="utf-8")
+    assert "# Tokenizer Data Collection Report" in report_text
+    assert "## Compact Summary" in report_text
 
     export_dir = artifacts_root / "tokenizer" / "exports" / "tok_a"
     assert (export_dir / "vocab.json").exists()

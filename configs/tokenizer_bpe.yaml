@@ -2,6 +2,8 @@ run:
   output_dir: "artifacts/tokenizer/runs"
   seed: 0
   log_level: "INFO"
+  report_output_path: "docs/data_collection_report.md"
+  stage3_metrics_every_merges: 200
 
 data:
   input_paths:
@@ -35,3 +37,11 @@ special_tokens:
     - "<|endoftext|>"
     - "<|pad|>"
   placement: "end"
+
+checkpointing:
+  enabled: true
+  snapshot_every_merges: 1000
+  wal_enabled: true
+  wal_fsync_every_commits: 200
+  wal_fsync_mode: "periodic"
+  resume_mode: "off"

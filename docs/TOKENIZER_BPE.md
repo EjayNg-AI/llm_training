@@ -4,18 +4,11 @@ This is the implementation reference for tokenizer Stage 03 in this repository.
 
 ## Scope
 
-Stage 03 trains and exports a deterministic GPT-2 style UTF-8 byte-level BPE tokenizer.
+Stage 03 trains and exports a deterministic GPT-2 style UTF-8 byte-level BPE tokenizer, and now records scaling-focused telemetry for Stage 1/2/3 analysis.
 
-Current Stage 03 design intentionally keeps run-local outputs minimal:
+## Entrypoints
 
-1. no checkpoint/resume workflow
-2. no WAL/snapshot state files
-3. no persisted run log files
-4. duration telemetry only (`training_telemetry.json`)
-
-## Entrypoint
-
-Train:
+Train tokenizer:
 
 ```bash
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml
@@ -30,25 +23,32 @@ python scripts/03_train_tokenizer.py \
   --artifact-id tokenizer_owt_32k_run01
 ```
 
-Key CLI options:
+Optional A/B stability comparison + report regeneration:
 
-1. `--run-id` selects the run subdirectory under `run.output_dir`.
-2. `--stop-after-merges` is a debug/testing knob for early stop.
-3. `--artifact-id` controls published tokenizer artifact ID.
+```bash
+python scripts/09_compare_tokenizer_ab.py \
+  --run-statistics artifacts/tokenizer/runs/<run_id>/run_statistics.json \
+  --export-a artifacts/tokenizer/exports/<artifact_a> \
+  --export-b artifacts/tokenizer/exports/<artifact_b> \
+  --run-a <run_a> \
+  --run-b <run_b> \
+  --heldout-text data/raw/<heldout.txt>
+```
 
 ## Run and Export Outputs
 
-Run directory (`run.output_dir/<run_id>/`) now contains:
+Run directory (`run.output_dir/<run_id>/`) includes:
 
 1. `training_telemetry.json`
+2. `run_statistics.json`
+3. `merges.wal` (when `checkpointing.enabled` and `checkpointing.wal_enabled` are true)
+4. `snapshot_*.json` (when snapshots are enabled and merge index reaches interval)
 
-`training_telemetry.json` fields:
+Canonical markdown report output:
 
-1. `training_started_at`
-2. `training_ended_at`
-3. `elapsed_seconds`
+1. `docs/data_collection_report.md` (or `run.report_output_path` override)
 
-Export directory (`artifacts/tokenizer/exports/<artifact_id>/`) contains:
+Export directory (`artifacts/tokenizer/exports/<artifact_id>/`) includes:
 
 1. `vocab.json`
 2. `merges.txt`
@@ -66,7 +66,7 @@ Published tokenizer exports are registered in:
 Config sources:
 
 1. `configs/tokenizer_bpe.yaml`
-2. `configs/tokenizer_bpe_owt_32k.yaml` (OpenWebText example)
+2. `configs/tokenizer_bpe_owt_32k.yaml`
 3. defaults in `scripts/tokenizer_bpe/config.py`
 
 Top-level config sections:
@@ -76,123 +76,78 @@ Top-level config sections:
 3. `pretokenizer`
 4. `bpe`
 5. `special_tokens`
+6. `checkpointing`
 
-No `checkpointing` section is used in Stage 03.
+Stage 03 exposes checkpointing settings for WAL/snapshot behavior and overhead measurement. `resume_mode` is currently accepted as config but still runs as fresh training.
 
-Default config:
+## Telemetry Contract
 
-```yaml
-run:
-  output_dir: "artifacts/tokenizer/runs"
-  seed: 0
-  log_level: "INFO"
+`training_telemetry.json` always includes:
 
-data:
-  input_paths:
-    - "data/raw/train.txt"
-  input_format: "text"
-  jsonl_text_field: "text"
-  decode_errors: "replace"
-  normalize: "none"
-  max_bytes: null
-  max_lines: null
-  num_workers: 4
-  batch_lines: 2000
-  min_piece_freq: 2
-  max_unique_pieces: 2000000
+1. `training_started_at`
+2. `training_ended_at`
+3. `elapsed_seconds`
 
-pretokenizer:
-  pattern: "gpt2_fast"
-  custom_pattern: null
-  flags: []
+It additionally includes:
 
-bpe:
-  vocab_size: 50000
-  min_merge_freq: 2
-  max_merges: null
-  max_word_types: 1500000
-  max_piece_bytes: 200
-  tie_break: "lexicographic"
+1. `stage_seconds`
+2. `artifact_id`
+3. `run_statistics_path`
+4. `report_path`
 
-special_tokens:
-  tokens:
-    - "<|endoftext|>"
-    - "<|pad|>"
-  placement: "end"
-```
+`run_statistics.json` includes:
+
+1. environment snapshot (`os`, `platform_mode`, CPU, RAM, Python, regex)
+2. scale-sensitive config snapshot
+3. Stage 1 metrics (`total_bytes_processed`, `total_pieces_seen`, cap/coverage metrics, RSS)
+4. Stage 2 metrics (`word_types_total/kept`, cutoff, symbol-length stats, RSS)
+5. Stage 3 metrics (merge latency, pair-state pressure, candidate stats, RSS, checkpoint overhead)
+6. optional `ab_stability` section from A/B comparison utility
 
 ## Algorithm Summary
-
-High-level flow:
 
 1. Stage 1: pretokenize corpus and count UTF-8 piece bytes.
 2. Stage 2: initialize weighted word-type state from piece counts.
 3. Stage 3: learn merges by repeatedly applying highest-frequency adjacent pair.
-4. Stage 4: export tokenizer artifacts.
+4. Stage 4: export tokenizer artifacts and publish manifest.
 
 Determinism-critical contracts:
 
 1. Stage 1 merges worker completions in contiguous `batch_id` order.
-2. Piece inventory sorting and tie-break behavior are deterministic.
-3. Stage 3 best-pair selection uses heap tuples `(-count, pair_id)` with lexicographic pair tie-break via `pair_id`.
-4. Export ID assignment is stable for fixed corpus + config.
+2. Stage 1/2 sorting uses deterministic tie-break ordering.
+3. Stage 3 best-pair selection uses heap tuples `(-count, pair_id)` with packed `pair_id`.
+4. Export ID assignment is stable for fixed config and source signature.
 
-## Stage 1 Notes
+## Stage Notes
 
-Module: `scripts/tokenizer_bpe/stage1_count.py`
+### Stage 1 (`scripts/tokenizer_bpe/stage1_count.py`)
 
-1. Supports `text` and `jsonl` inputs (optionally `.gz`).
-2. Applies optional line normalization (`none`, `NFC`, `NFKC`) before regex piece extraction.
+1. Supports `text` and `jsonl` (with optional `.gz`) input files.
+2. Applies optional normalization (`none`, `NFC`, `NFKC`) before regex extraction.
 3. Drops pieces longer than `bpe.max_piece_bytes`.
-4. Uses a single deterministic memory approximation knob:
-   - optional top-K capping by `data.max_unique_pieces` every 100 merged batches.
-5. Emits console progress logs; no persisted Stage 1 progress files.
+4. Applies deterministic top-K approximation by `data.max_unique_pieces`.
+5. Emits cap-boundary and coverage metrics for scaling analysis.
 
-## Stage 2 Notes
+### Stage 2 (`scripts/tokenizer_bpe/stage2_init.py`)
 
-Module: `scripts/tokenizer_bpe/stage2_init.py`
+1. Applies `min_piece_freq`, deterministic sorting, then `max_word_types` cap.
+2. Builds compact `array('H'/'I')` symbol storage and `array('Q')` frequencies.
+3. Emits capped inventory and symbol-length distribution telemetry.
 
-1. Converts byte-piece counts into weighted word types.
-2. Initializes base byte vocabulary (`0..255`).
-3. Chooses compact storage type (`array('H')` or `array('I')`) from max symbol ID bound.
+### Stage 3 (`scripts/tokenizer_bpe/stage3_train.py`)
 
-## Stage 3 Notes
-
-Module: `scripts/tokenizer_bpe/stage3_train.py`
-
-1. No resume/WAL/snapshot mechanics.
-2. Runs merge learning fully in-memory for each run.
-3. Maintains `pair_count` incrementally and rebuilds heap periodically under stale-growth pressure.
-4. Emits periodic console progress logs.
+1. Trains merges in-memory with incremental pair-count updates.
+2. Maintains heap pressure using stale-ratio rebuild.
+3. Emits merge-latency window metrics and pair/candidate state pressure metrics.
+4. Optionally writes WAL and periodic snapshots.
+5. Captures checkpointing overhead (`snapshot_*` and WAL sync timing).
 
 Stop conditions:
 
 1. no remaining valid pair
 2. best pair count below `bpe.min_merge_freq`
-3. reached merge target derived from `bpe.vocab_size`/`bpe.max_merges`
-4. optional debug stop via `--stop-after-merges`
-
-## Export Contract
-
-Module: `scripts/tokenizer_bpe/export.py`
-
-Artifacts:
-
-1. `vocab.json`: token string -> ID
-2. `merges.txt`: merge order (`#version: 0.2` + token-string pairs)
-3. `tokenizer_config.json`: pattern metadata, hashes, tokenizer metadata
-4. `special_tokens_map.json`
-5. `training_stats.json`
-
-`training_stats.json` includes:
-
-1. `run_dir`
-2. `final_merge_index`
-3. `vocab_size`
-4. `num_merges`
-5. `config_hash`
-6. `pattern_hash`
-7. `training_corpus_sha256`
+3. reached merge target from `bpe.vocab_size` or `bpe.max_merges`
+4. optional `--stop-after-merges`
 
 ## Testing References
 

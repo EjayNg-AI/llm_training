@@ -65,3 +65,6 @@ def test_train_bpe_respects_stop_after_merges(tmp_path, tokenizer_logger):
     assert train_state["last_merge"] == 1
     assert len(train_state["merge_pairs"]) == 1
     assert len(train_state["id_to_token_bytes"]) == 257
+    assert "stage3_meta" in train_state
+    assert train_state["stage3_meta"]["merges_done"] == 1
+    assert train_state["stage3_meta"]["pair_count_len_initial"] >= 1

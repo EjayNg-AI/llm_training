@@ -102,9 +102,25 @@ python scripts/03_train_tokenizer.py \
   --artifact-id tokenizer_owt_32k_run01
 ```
 
-Telemetry for elapsed runtime is written to:
+Tokenizer run outputs now include:
 
 - `artifacts/tokenizer/runs/<run_id>/training_telemetry.json`
+- `artifacts/tokenizer/runs/<run_id>/run_statistics.json`
+- `artifacts/tokenizer/runs/<run_id>/merges.wal` (when checkpointing is enabled)
+- periodic `snapshot_*.json` files (when checkpointing snapshots are enabled)
+- auto-generated scaling report: `docs/data_collection_report.md`
+
+Optional A/B stability append + report regeneration:
+
+```bash
+python scripts/09_compare_tokenizer_ab.py \
+  --run-statistics artifacts/tokenizer/runs/<run_id>/run_statistics.json \
+  --export-a artifacts/tokenizer/exports/<artifact_a> \
+  --export-b artifacts/tokenizer/exports/<artifact_b> \
+  --run-a <run_a> \
+  --run-b <run_b> \
+  --heldout-text data/raw/<heldout.txt>
+```
 
 ### 6) Run tests
 
@@ -160,7 +176,7 @@ When implementation changes behavior, update both:
 The local scripts are not the end-state. They are the proving ground for:
 
 - strict artifact/version discipline
-- deterministic and resumable training workflows
+- deterministic and checkpoint-instrumented training workflows
 - testable stage boundaries
 - clean transition to cloud orchestration and large-scale training/inference on AWS
 

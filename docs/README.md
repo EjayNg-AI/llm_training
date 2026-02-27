@@ -17,6 +17,8 @@ This directory holds implementation-level documentation for the repository.
   - Detailed implementation-level documentation for each completed scaffold step.
 - `docs/TOKENIZER_BPE.md`
   - Deep technical documentation for the local GPT-2 style byte-level BPE tokenizer trainer.
+- `docs/data_collection_report.md`
+  - Canonical tokenizer scaling report generated from Stage 03 run telemetry.
 - `docs/CHANGELOG.md`
   - Repository change log with summary, impact, validation status, and doc updates.
 
@@ -25,7 +27,7 @@ Related docs outside `docs/`:
 - `README.md`: public onboarding and quick start.
 - `AGENTS.md`: operating rules for Codex and repository contributors.
 - `CONFIG.md`: tokenizer config reference.
-- `CHECKPOINTING.md`: tokenizer checkpointing note (Stage 03 currently has no checkpoint/recovery path).
+- `CHECKPOINTING.md`: tokenizer checkpointing telemetry and WAL/snapshot behavior notes.
 
 ## Update policy
 

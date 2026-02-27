@@ -26,9 +26,11 @@ from tokenizer_bpe.config import build_pattern_hash, load_config
 from tokenizer_bpe.export import export_tokenizer
 from tokenizer_bpe.io_atomic import atomic_dump_json
 from tokenizer_bpe.pretokenizer import resolve_pattern
+from tokenizer_bpe.report_data_collection import write_data_collection_report
 from tokenizer_bpe.stage1_count import count_pieces
 from tokenizer_bpe.stage2_init import initialize_training_state
 from tokenizer_bpe.stage3_train import train_bpe
+from tokenizer_bpe.telemetry import collect_environment_snapshot
 
 
 def _utc_now_iso() -> str:
@@ -64,6 +66,24 @@ def _setup_logging(cfg: dict[str, Any]) -> logging.Logger:
     console.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger.addHandler(console)
     return logger
+
+
+def _scale_config_snapshot(cfg: dict[str, Any]) -> dict[str, Any]:
+    checkpointing = cfg.get("checkpointing", {})
+    return {
+        "min_piece_freq": cfg["data"]["min_piece_freq"],
+        "max_unique_pieces": cfg["data"]["max_unique_pieces"],
+        "max_word_types": cfg["bpe"]["max_word_types"],
+        "max_piece_bytes": cfg["bpe"]["max_piece_bytes"],
+        "vocab_size": cfg["bpe"]["vocab_size"],
+        "min_merge_freq": cfg["bpe"]["min_merge_freq"],
+        "max_merges": cfg["bpe"]["max_merges"],
+        "num_workers": cfg["data"]["num_workers"],
+        "batch_lines": cfg["data"]["batch_lines"],
+        "snapshot_every_merges": checkpointing.get("snapshot_every_merges"),
+        "wal_fsync_mode": checkpointing.get("wal_fsync_mode"),
+        "wal_fsync_every_commits": checkpointing.get("wal_fsync_every_commits"),
+    }
 
 
 def parse_args() -> argparse.Namespace:
@@ -116,8 +136,13 @@ def main() -> None:
 
     training_started_at = _utc_now_iso()
     timer_start = time.perf_counter()
+    artifact_id: str | None = None
+    run_statistics_path: Path | None = None
+    report_path: Path | None = None
+    run_stats: dict[str, Any] | None = None
 
     try:
+        env_snapshot = collect_environment_snapshot()
         pattern_alias, pattern_str, pattern_flags, regex_version = resolve_pattern(cfg["pretokenizer"])
         pattern_hash = build_pattern_hash(
             pattern_str=pattern_str,
@@ -141,7 +166,7 @@ def main() -> None:
             logger=logger,
         )
 
-        init_state = initialize_training_state(piece_counts=piece_counts, cfg=cfg, logger=logger)
+        init_state, stage2_meta = initialize_training_state(piece_counts=piece_counts, cfg=cfg, logger=logger)
 
         train_state = train_bpe(
             cfg=cfg,
@@ -152,6 +177,7 @@ def main() -> None:
             pattern_hash=pattern_hash,
             stop_after_merges=args.stop_after_merges,
         )
+        stage3_meta = train_state.get("stage3_meta", {})
 
         source_signature = stable_hash_object(
             {
@@ -213,16 +239,57 @@ def main() -> None:
         )
         publish_artifact(artifacts_root=artifacts_root, artifact_dir=export_dir, manifest=manifest)
         logger.info("Tokenizer export complete: %s (artifact_id=%s)", export_dir, artifact_id)
+
+        training_ended_at = _utc_now_iso()
+        elapsed_seconds = max(0.0, time.perf_counter() - timer_start)
+        run_stats = {
+            "run_id": run_id,
+            "artifact_id": artifact_id,
+            "config_hash": cfg["meta"]["config_hash"],
+            "pattern_hash": pattern_hash,
+            "pattern_alias": pattern_alias,
+            "training_started_at": training_started_at,
+            "training_ended_at": training_ended_at,
+            "elapsed_seconds": elapsed_seconds,
+            "training_corpus_sha256": stage1_meta["training_corpus_sha256"],
+            "environment": env_snapshot,
+            "scale_config": _scale_config_snapshot(cfg),
+            "stage1": stage1_meta,
+            "stage2": stage2_meta,
+            "stage3": stage3_meta,
+            "export": {
+                "export_dir": str(export_dir),
+                "vocab_size": len(train_state["id_to_token_bytes"]) + len(cfg["special_tokens"]["tokens"]),
+                "num_merges": len(train_state["merge_pairs"]),
+            },
+        }
+        run_statistics_path = run_dir / "run_statistics.json"
+        atomic_dump_json(run_statistics_path, run_stats)
+        report_path = write_data_collection_report(run_stats, Path(cfg["run"]["report_output_path"]))
+        logger.info("Data collection report written: %s", report_path)
     finally:
         training_ended_at = _utc_now_iso()
         elapsed_seconds = max(0.0, time.perf_counter() - timer_start)
+        telemetry_payload: dict[str, Any] = {
+            "training_started_at": training_started_at,
+            "training_ended_at": training_ended_at,
+            "elapsed_seconds": elapsed_seconds,
+        }
+        if run_stats is not None:
+            telemetry_payload["stage_seconds"] = {
+                "stage1": run_stats["stage1"].get("stage1_elapsed_seconds"),
+                "stage2": run_stats["stage2"].get("stage2_elapsed_seconds"),
+                "stage3": run_stats["stage3"].get("elapsed_seconds"),
+            }
+        if artifact_id is not None:
+            telemetry_payload["artifact_id"] = artifact_id
+        if run_statistics_path is not None:
+            telemetry_payload["run_statistics_path"] = str(run_statistics_path)
+        if report_path is not None:
+            telemetry_payload["report_path"] = str(report_path)
         atomic_dump_json(
             run_dir / "training_telemetry.json",
-            {
-                "training_started_at": training_started_at,
-                "training_ended_at": training_ended_at,
-                "elapsed_seconds": elapsed_seconds,
-            },
+            telemetry_payload,
         )
         logger.info("Training duration: elapsed_seconds=%.3f", elapsed_seconds)
 

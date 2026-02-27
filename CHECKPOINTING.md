@@ -1,17 +1,26 @@
-# Checkpointing Note
+# Tokenizer Stage 03 Checkpointing
 
-Tokenizer Stage 03 (`scripts/03_train_tokenizer.py`) no longer implements checkpoint/recovery mechanics.
+Tokenizer Stage 03 (`scripts/03_train_tokenizer.py`) now exposes checkpoint instrumentation for durability/performance measurement.
 
-Current behavior:
+## Current behavior
 
-1. no Stage 1 checkpoint snapshots
-2. no Stage 3 WAL
-3. no Stage 3 state snapshots
-4. no resume mode
+1. Stage 3 can emit append-only merge WAL entries to `merges.wal`.
+2. Stage 3 can emit periodic `snapshot_*.json` files.
+3. WAL fsync policy is configurable (`periodic` or `per_commit`).
+4. Checkpoint overhead is measured and saved in `run_statistics.json`:
+   - WAL sync count and total sync seconds
+   - snapshot count and total snapshot seconds
 
-Stage 03 is a fresh-run workflow that emits:
+## Limits
 
-1. final tokenizer export artifacts under `artifacts/tokenizer/exports/<artifact_id>/`
-2. duration telemetry under `run.output_dir/<run_id>/training_telemetry.json`
+1. `resume_mode` is accepted in config but Stage 03 currently still starts from a fresh run.
+2. Snapshot files are lightweight progress snapshots intended for telemetry, not full state reconstruction.
 
-Other pipeline stages may still implement their own checkpointing semantics.
+## Relevant config fields
+
+1. `checkpointing.enabled`
+2. `checkpointing.snapshot_every_merges`
+3. `checkpointing.wal_enabled`
+4. `checkpointing.wal_fsync_every_commits`
+5. `checkpointing.wal_fsync_mode`
+6. `checkpointing.resume_mode`

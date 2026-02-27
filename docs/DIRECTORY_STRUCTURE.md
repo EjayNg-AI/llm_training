@@ -44,7 +44,9 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - tokenize.yaml
   - tokenizer_bpe.yaml
   - tokenizer_bpe_owt_32k.yaml
+  - tokenizer_bpe_owt_32k_probe_10gb.yaml
   - train.yaml
+- data_collection.md
 - data/
   - .gitkeep
   - processed/
@@ -60,7 +62,9 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - PROJECT_STATUS.md
   - README.md
   - TOKENIZER_BPE.md
+  - data_collection_report.md
 - llm_training_overview.md
+- manual_tokenizer_training_commands.md
 - pytest.ini
 - requirements.txt
 - scripts/
@@ -77,20 +81,24 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - 06_pretrain.py
   - 07_sft_lora.py
   - 08_eval.py
+  - 09_compare_tokenizer_ab.py
   - _bootstrap.py
   - cleanup_zone_identifier.py
   - pipeline_common.py
   - tokenizer_bpe/
+    - ab_compare.py
     - __init__.py
     - byte_unicode.py
     - config.py
     - export.py
     - io_atomic.py
     - pretokenizer.py
+    - report_data_collection.py
     - runtime_check.py
     - stage1_count.py
     - stage2_init.py
     - stage3_train.py
+    - telemetry.py
 - src/
   - llm_training/
     - __init__.py
@@ -122,12 +130,15 @@ This is the canonical tracked structure of the repository as documented in `AGEN
     - __init__.py
     - conftest.py
     - helpers.py
+    - test_ab_compare.py
     - test_byte_unicode.py
     - test_config.py
     - test_export.py
     - test_pretokenizer.py
+    - test_report_data_collection.py
     - test_runtime_check.py
     - test_stage03_minimal_outputs.py
+    - test_stage1_metrics.py
     - test_stage1_count_unit.py
     - test_stage2_init.py
     - test_stage3_core.py

@@ -52,7 +52,7 @@ This repo is now a stronger local/laptop engineering scaffold:
 
 1. Canonical stage naming and sequence (`01..08` scripts).
 2. Artifact directory conventions and append-only registry under `artifacts/`.
-3. Deterministic, resumable tokenizer training behavior.
+3. Deterministic tokenizer training with Stage 03 scaling telemetry and checkpoint instrumentation (WAL/snapshot metrics).
 4. Shared run metadata/state/metrics and manifest contract for new pipeline stages.
 5. Use of `llm_training_overview.md` as architecture guide and sequencing reference.
 
@@ -60,4 +60,4 @@ This repo is now a stronger local/laptop engineering scaffold:
 
 1. Step-by-step details for implemented pipeline stages: `docs/IMPLEMENTED_STEPS.md`.
 2. Tokenizer implementation internals and contracts: `docs/TOKENIZER_BPE.md`.
-3. Tokenizer config and recovery specifics: `CONFIG.md` and `CHECKPOINTING.md`.
+3. Tokenizer config and checkpoint telemetry specifics: `CONFIG.md` and `CHECKPOINTING.md`.

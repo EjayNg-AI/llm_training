@@ -21,7 +21,7 @@ def test_initialize_training_state_filters_and_sorts(tokenizer_logger):
             b"z": 1,
         }
     )
-    state = initialize_training_state(
+    state, meta = initialize_training_state(
         piece_counts=piece_counts,
         cfg=_cfg(min_piece_freq=2, max_word_types=10),
         logger=tokenizer_logger,
@@ -32,14 +32,21 @@ def test_initialize_training_state_filters_and_sorts(tokenizer_logger):
     assert len(state["id_to_token_bytes"]) == 256
     assert state["id_to_token_bytes"][0] == b"\x00"
     assert state["id_to_token_bytes"][255] == b"\xff"
+    assert meta["word_types_total"] == 2
+    assert meta["word_types_kept"] == 2
+    assert meta["hit_max_word_types"] is False
 
 
 def test_initialize_training_state_applies_max_word_types(tokenizer_logger):
     piece_counts = Counter({b"aa": 5, b"ab": 4, b"ac": 3})
-    state = initialize_training_state(
+    state, meta = initialize_training_state(
         piece_counts=piece_counts,
         cfg=_cfg(min_piece_freq=1, max_word_types=2),
         logger=tokenizer_logger,
     )
     assert len(state["words"]) == 2
     assert state["freqs"].tolist() == [5, 4]
+    assert meta["word_types_total"] == 3
+    assert meta["word_types_kept"] == 2
+    assert meta["hit_max_word_types"] is True
+    assert meta["cutoff_freq_at_word_types_cap"] == 4

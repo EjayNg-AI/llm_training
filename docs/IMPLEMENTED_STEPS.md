@@ -67,9 +67,14 @@ Current behavior:
    - Stage 2/3 compact integer-array state (`array('H'/'I')` words + array-backed freqs)
    - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`) and heap pressure controls
    - deterministic merge/export behavior
-2. Writes lightweight Stage 03 duration telemetry to the run directory with start/end timestamps and elapsed seconds.
-3. Publishes tokenizer artifacts by artifact ID under `artifacts/tokenizer/exports/<tokenizer_id>/`.
-4. Registers tokenizer artifact with manifest and lineage metadata.
+   - Stage 1/2/3 scaling telemetry and memory stats
+   - Stage 3 checkpoint instrumentation (WAL + snapshots + overhead timing)
+2. Writes Stage 03 run telemetry and structured run statistics:
+   - `training_telemetry.json`
+   - `run_statistics.json`
+3. Auto-generates the canonical scaling markdown report at `docs/data_collection_report.md` (or `run.report_output_path` override).
+4. Publishes tokenizer artifacts by artifact ID under `artifacts/tokenizer/exports/<tokenizer_id>/`.
+5. Registers tokenizer artifact with manifest and lineage metadata.
 
 Artifacts:
 
@@ -83,6 +88,10 @@ Artifacts:
 Run outputs:
 
 1. `artifacts/tokenizer/runs/<run_id>/training_telemetry.json`
+2. `artifacts/tokenizer/runs/<run_id>/run_statistics.json`
+3. `artifacts/tokenizer/runs/<run_id>/merges.wal` (when checkpointing WAL is enabled)
+4. `artifacts/tokenizer/runs/<run_id>/snapshot_*.json` (when snapshot interval is reached)
+5. `docs/data_collection_report.md` (auto-generated report)
 
 ## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
 

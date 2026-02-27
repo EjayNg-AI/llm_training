@@ -50,8 +50,16 @@ def test_load_config_rejects_invalid_vocab_size(tmp_path):
         load_config(cfg_path)
 
 
-def test_load_config_defaults_do_not_include_checkpointing():
-    assert "checkpointing" not in DEFAULT_CONFIG
+def test_load_config_defaults_include_checkpointing():
+    assert "checkpointing" in DEFAULT_CONFIG
+    assert DEFAULT_CONFIG["checkpointing"]["enabled"] is True
+
+
+def test_load_config_rejects_invalid_checkpointing_mode(tmp_path):
+    cfg_path = tmp_path / "tokenizer.yaml"
+    cfg_path.write_text("checkpointing:\n  wal_fsync_mode: sometimes\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="checkpointing.wal_fsync_mode"):
+        load_config(cfg_path)
 
 
 def test_load_config_requires_mapping(tmp_path):

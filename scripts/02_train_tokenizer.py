@@ -122,7 +122,7 @@ def main() -> None:
         logger=logger,
     )
 
-    init_state = initialize_training_state(piece_counts=piece_counts, cfg=cfg, logger=logger)
+    init_state, _ = initialize_training_state(piece_counts=piece_counts, cfg=cfg, logger=logger)
 
     train_state = train_bpe(
         cfg=cfg,

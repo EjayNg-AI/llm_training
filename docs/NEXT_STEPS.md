@@ -108,7 +108,7 @@ Definition of done:
 
 Current status:
 
-1. Deterministic resumable tokenizer trainer is implemented and now published as artifact IDs.
+1. Deterministic tokenizer trainer with checkpoint instrumentation is implemented and published as artifact IDs.
 2. Runtime tokenizer class exists for downstream stage consumption.
 
 Next actions:

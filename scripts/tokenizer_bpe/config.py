@@ -16,6 +16,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "output_dir": "artifacts/tokenizer/runs",
         "seed": 0,
         "log_level": "INFO",
+        "report_output_path": "docs/data_collection_report.md",
+        "stage3_metrics_every_merges": 200,
     },
     "data": {
         "input_paths": ["data/raw/train.txt"],
@@ -47,6 +49,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "tokens": ["<|endoftext|>", "<|pad|>"],
         "placement": "end",
     },
+    "checkpointing": {
+        "enabled": True,
+        "snapshot_every_merges": 1000,
+        "wal_enabled": True,
+        "wal_fsync_every_commits": 200,
+        "wal_fsync_mode": "periodic",
+        "resume_mode": "off",
+    },
 }
 
 
@@ -69,6 +79,10 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError("data.normalize must be one of: none, NFC, NFKC")
     if cfg["special_tokens"]["placement"] not in {"start", "end"}:
         raise ValueError("special_tokens.placement must be one of: start, end")
+    if cfg["checkpointing"]["wal_fsync_mode"] not in {"periodic", "per_commit"}:
+        raise ValueError("checkpointing.wal_fsync_mode must be one of: periodic, per_commit")
+    if cfg["checkpointing"]["resume_mode"] not in {"off", "auto"}:
+        raise ValueError("checkpointing.resume_mode must be one of: off, auto")
     if cfg["bpe"]["tie_break"] != "lexicographic":
         raise ValueError("Only lexicographic tie_break is supported.")
     if not cfg["data"]["input_paths"]:
@@ -77,8 +91,14 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError("data.num_workers must be >= 1")
     if int(cfg["data"]["batch_lines"]) < 1:
         raise ValueError("data.batch_lines must be >= 1")
+    if int(cfg["run"]["stage3_metrics_every_merges"]) < 1:
+        raise ValueError("run.stage3_metrics_every_merges must be >= 1")
     if int(cfg["bpe"]["vocab_size"]) < 256:
         raise ValueError("bpe.vocab_size must be >= 256")
+    if int(cfg["checkpointing"]["snapshot_every_merges"]) < 0:
+        raise ValueError("checkpointing.snapshot_every_merges must be >= 0")
+    if int(cfg["checkpointing"]["wal_fsync_every_commits"]) < 1:
+        raise ValueError("checkpointing.wal_fsync_every_commits must be >= 1")
 
 
 def canonical_config_json(cfg: dict[str, Any]) -> str:

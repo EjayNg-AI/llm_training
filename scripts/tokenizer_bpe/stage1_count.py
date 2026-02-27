@@ -9,10 +9,12 @@ import hashlib
 import json
 import logging
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 import unicodedata
 
 from .pretokenizer import compile_pattern, iter_pieces
+from .telemetry import RssSampler
 
 
 _WORKER_PATTERN = None
@@ -114,6 +116,13 @@ def _prune_counter(counter: Counter[bytes], min_piece_freq: int, max_unique_piec
     return counter
 
 
+def _frequency_cutoff(items: list[tuple[bytes, int]], kept_count: int) -> int:
+    if not items or kept_count <= 0:
+        return 0
+    idx = min(kept_count, len(items)) - 1
+    return int(items[idx][1])
+
+
 def _compute_corpus_fingerprint(file_paths: list[Path]) -> str:
     h = hashlib.sha256()
     for path in sorted(file_paths):
@@ -132,9 +141,10 @@ def count_pieces(
     pattern_hash: str,
     logger: logging.Logger,
 ) -> tuple[Counter[bytes], dict[str, Any]]:
-    del run_dir, pattern_hash  # API compatibility; Stage 1 no longer writes run-local checkpoints.
+    del run_dir, pattern_hash  # API compatibility; no run-local Stage 1 files are written.
 
     data_cfg = cfg["data"]
+    min_piece_freq = int(data_cfg["min_piece_freq"])
 
     input_paths = _discover_input_files(data_cfg["input_paths"], data_cfg["input_format"])
     corpus_hash = _compute_corpus_fingerprint(input_paths)
@@ -149,6 +159,9 @@ def count_pieces(
     num_workers = int(data_cfg["num_workers"])
     batch_lines = int(data_cfg["batch_lines"])
     max_unique_pieces = data_cfg["max_unique_pieces"]
+    stage1_started = perf_counter()
+    rss = RssSampler()
+    rss.sample()
 
     logger.info(
         "Stage 1 starting: files=%s workers=%s batch_lines=%s",
@@ -243,6 +256,7 @@ def count_pieces(
                             piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
 
                         if merged_batches % STAGE1_LOG_EVERY_BATCHES == 0:
+                            rss.sample()
                             logger.info(
                                 "Stage 1 progress: lines=%s pieces=%s unique=%s",
                                 total_lines_processed,
@@ -252,17 +266,47 @@ def count_pieces(
 
     if max_unique_pieces is not None:
         piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
+    rss.sample()
+    stage1_elapsed = max(0.0, perf_counter() - stage1_started)
+
+    unique_before_prune = len(piece_counts)
+    filtered_items = [(piece, int(freq)) for piece, freq in piece_counts.items() if int(freq) >= min_piece_freq]
+    filtered_items.sort(key=lambda kv: (-kv[1], kv[0]))
+    unique_after_min_freq = len(filtered_items)
+    if max_unique_pieces is None:
+        kept_items = filtered_items
+        hit_max_unique_pieces = False
+    else:
+        kept_items = filtered_items[: int(max_unique_pieces)]
+        hit_max_unique_pieces = unique_after_min_freq > int(max_unique_pieces)
+    unique_kept = len(kept_items)
+    cutoff_freq = _frequency_cutoff(filtered_items, unique_kept)
+    kept_mass = int(sum(freq for _, freq in kept_items))
+    coverage = float(kept_mass / total_pieces_seen) if total_pieces_seen > 0 else 0.0
 
     logger.info(
-        "Stage 1 complete: lines=%s pieces=%s unique=%s",
+        "Stage 1 complete: lines=%s pieces=%s unique=%s coverage=%.6f elapsed=%.3fs",
         total_lines_processed,
         total_pieces_seen,
         len(piece_counts),
+        coverage,
+        stage1_elapsed,
     )
 
     metadata = {
         "total_lines_processed": total_lines_processed,
+        "total_bytes_processed": total_bytes_processed,
         "total_pieces_seen": total_pieces_seen,
+        "stage1_elapsed_seconds": stage1_elapsed,
+        "unique_before_prune": unique_before_prune,
+        "unique_after_min_freq": unique_after_min_freq,
+        "unique_kept": unique_kept,
+        "hit_max_unique_pieces": hit_max_unique_pieces,
+        "cutoff_freq_at_unique_cap": cutoff_freq,
+        "kept_mass": kept_mass,
+        "coverage": coverage,
+        "rss_peak_mb": rss.peak_mb,
+        "rss_end_mb": rss.last_mb,
         "training_corpus_sha256": corpus_hash,
     }
     return piece_counts, metadata

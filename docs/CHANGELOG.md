@@ -14,6 +14,65 @@ Format:
 
 ## Unreleased
 
+### 2026-02-27 (Tokenizer Stage 03 scaling telemetry, checkpoint instrumentation, and report generation)
+
+Summary:
+
+1. Expanded Stage 03 tokenizer runtime telemetry from duration-only to full Stage 1/2/3 scaling metrics and environment/config snapshots.
+2. Reintroduced Stage 3 checkpoint instrumentation with configurable WAL/snapshot behavior and measured overhead timing.
+3. Added structured per-run metrics output `run_statistics.json` and auto-generated canonical markdown report `docs/data_collection_report.md`.
+4. Added A/B tokenizer comparison utility (`scripts/09_compare_tokenizer_ab.py`) for merge-overlap and held-out tokenization efficiency checks.
+5. Updated Stage 03 integration tests and added new tests for Stage 1 metrics, report generation, and A/B metrics attachment.
+6. Added a dedicated 10GB probe config and a root markdown runbook for manual tokenizer-loop execution commands.
+
+Impacted files/modules:
+
+1. `scripts/03_train_tokenizer.py`
+2. `scripts/02_train_tokenizer.py`
+3. `scripts/09_compare_tokenizer_ab.py`
+4. `scripts/tokenizer_bpe/config.py`
+5. `scripts/tokenizer_bpe/stage1_count.py`
+6. `scripts/tokenizer_bpe/stage2_init.py`
+7. `scripts/tokenizer_bpe/stage3_train.py`
+8. `scripts/tokenizer_bpe/telemetry.py`
+9. `scripts/tokenizer_bpe/report_data_collection.py`
+10. `scripts/tokenizer_bpe/ab_compare.py`
+11. `configs/tokenizer_bpe.yaml`
+12. `configs/tokenizer_bpe_owt_32k.yaml`
+13. `configs/tokenizer_bpe_owt_32k_probe_10gb.yaml`
+14. `tests/tokenizer_bpe/helpers.py`
+15. `tests/tokenizer_bpe/test_config.py`
+16. `tests/tokenizer_bpe/test_stage03_minimal_outputs.py`
+17. `tests/tokenizer_bpe/test_stage2_init.py`
+18. `tests/tokenizer_bpe/test_stage3_core.py`
+19. `tests/tokenizer_bpe/test_stage1_metrics.py`
+20. `tests/tokenizer_bpe/test_report_data_collection.py`
+21. `tests/tokenizer_bpe/test_ab_compare.py`
+22. `README.md`
+23. `docs/TOKENIZER_BPE.md`
+24. `docs/IMPLEMENTED_STEPS.md`
+25. `docs/PROJECT_STATUS.md`
+26. `docs/README.md`
+27. `docs/NEXT_STEPS.md`
+28. `docs/DIRECTORY_STRUCTURE.md`
+29. `CONFIG.md`
+30. `CHECKPOINTING.md`
+31. `docs/data_collection_report.md`
+32. `manual_tokenizer_training_commands.md`
+33. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_config.py tests/tokenizer_bpe/test_stage1_metrics.py tests/tokenizer_bpe/test_stage2_init.py tests/tokenizer_bpe/test_stage3_core.py tests/tokenizer_bpe/test_report_data_collection.py tests/tokenizer_bpe/test_stage03_minimal_outputs.py tests/tokenizer_bpe/test_ab_compare.py` passed (`21 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe` passed (`41 passed`).
+
+Documentation updates:
+
+1. Updated tokenizer technical contract and outputs in `docs/TOKENIZER_BPE.md`.
+2. Updated Stage 03 implemented behavior and run outputs in `docs/IMPLEMENTED_STEPS.md`.
+3. Updated config/checkpoint references in `CONFIG.md` and `CHECKPOINTING.md`.
+4. Added canonical report file and documentation index references.
+
 ### 2026-02-27 (Tokenizer Stage 03 checkpoint/memory telemetry removal + minimal run artifacts)
 
 Summary:
