@@ -1,9 +1,9 @@
-# Tokenizer Data Collection Report
+# Tokenizer Data Collection Report for 10GB Probe Run
 
-- Generated (UTC): `2026-02-27T17:14:07Z`
-- Run ID: `owt32k_full_20260227_165243`
-- Artifact ID: `tokenizer_owt32k_full_20260227_165243`
-- Config Hash: `aa91ce55c0b6c0cc4b27def6ad8d87b8b2d557f53d1a2b029ee10bf8ed9d7ff5`
+- Generated (UTC): `2026-02-27T16:29:27Z`
+- Run ID: `owt32k_probe_10gb_20260227_160946`
+- Artifact ID: `tokenizer_owt32k_probe_10gb_20260227_160946`
+- Config Hash: `0606907a323750aa1218c4e6e9e41d4532d20b0822a6b89eb7dc9c23b291d86d`
 - Pattern Hash: `0a10b5fe5e3bbecbc850fda5259aeb5dc3da062c22f6b526252f12ef00ee3667`
 
 ## Environment + Config Snapshot
@@ -33,30 +33,30 @@
 
 | total_bytes | total_pieces_seen | unique_before | unique_kept | hit_cap | cutoff_freq | coverage | RSS_peak_mb | t_stage1_s |
 |---:|---:|---:|---:|:---:|---:|---:|---:|---:|
-| 11920511059 | 2476979902 | 2000000 | 2000000 | no | 2 | 0.997315 | 466.168 | 1188.694 |
+| 10737418607 | 2231287958 | 2000000 | 2000000 | no | 2 | 0.997385 | 466.324 | 1085.863 |
 
 ### Stage 2
 
 | word_types_total | word_types_kept | hit_cap | cutoff_freq | avg_len | p95_len | max_len | RSS_end_mb |
 |---:|---:|:---:|---:|---:|---:|---:|---:|
-| 2000000 | 1500000 | yes | 4 | 8.397 | 14 | 200 | 562.465 |
+| 2000000 | 1500000 | yes | 3 | 8.404 | 14 | 200 | 561.859 |
 
 ### Stage 3
 
 | merges_done | t_stage3_s | median_ms/merge | RSS_peak_mb | pair_count_initial | pair_count_late | typical_candidates/merge |
 |---:|---:|---:|---:|---:|---:|---:|
-| 31742 | 97.969 | 0.412 | 1729.500 | 13046 | 1041413 | 15.000 |
+| 31742 | 96.599 | 0.245 | 1574.246 | 13133 | 1041744 | 15.000 |
 
 ## Additional Data Points
-- Stage 1 lines processed: `94568885`
-- Stage 1 bytes/sec: `10028237.815`
-- Stage 1 estimated time for 100GB (s): `10707.183`
-- Stage 1 kept_mass: `2470329737`
-- Stage 2 elapsed (s): `2.628`
-- Stage 3 p95 ms/merge: `5.989`
-- Stage 3 best_count initial/late: `258491340` / `6231`
-- Snapshot count/total seconds: `31` / `0.261`
-- WAL sync count/seconds: `159` / `1.233`
+- Stage 1 lines processed: `85203001`
+- Stage 1 bytes/sec: `9888377.430`
+- Stage 1 estimated time for 100GB (s): `10858.625`
+- Stage 1 kept_mass: `2225453427`
+- Stage 2 elapsed (s): `2.691`
+- Stage 3 p95 ms/merge: `5.952`
+- Stage 3 best_count initial/late: `232814105` / `5614`
+- Snapshot count/total seconds: `31` / `0.265`
+- WAL sync count/seconds: `159` / `1.356`
 
 ## A/B Stability
 - A/B comparison is not attached to this run yet.

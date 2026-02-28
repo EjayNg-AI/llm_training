@@ -1,6 +1,6 @@
 # Tokenizer Data Collection Report
 
-- Generated (UTC): `2026-02-27T17:14:07Z`
+- Generated (UTC): `2026-02-27T17:38:34Z`
 - Run ID: `owt32k_full_20260227_165243`
 - Artifact ID: `tokenizer_owt32k_full_20260227_165243`
 - Config Hash: `aa91ce55c0b6c0cc4b27def6ad8d87b8b2d557f53d1a2b029ee10bf8ed9d7ff5`
@@ -59,6 +59,12 @@
 - WAL sync count/seconds: `159` / `1.233`
 
 ## A/B Stability
-- A/B comparison is not attached to this run yet.
-- Use the A/B utility to append stability metrics into `run_statistics.json`.
+- Run A: `owt32k_probe_10gb_20260227_160946`
+- Run B: `owt32k_full_20260227_165243`
+- Held-out path: `owt_valid.txt`
+- Merge overlap@1k: `0.999`
+- Merge overlap@5k: `0.999`
+- Merge overlap@10k: `0.999`
+- tokens/char delta (B-A): `-0.000`
+- tokens/word delta (B-A): `-0.000`
 
