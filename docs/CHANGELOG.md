@@ -14,6 +14,50 @@ Format:
 
 ## Unreleased
 
+### 2026-02-28 (Ignore local raw data payloads in git status)
+
+Summary:
+
+1. Updated `.gitignore` to ignore all files under `data/raw/` while preserving `data/raw/.gitkeep`.
+2. Added a root-level ignore pattern for local OpenWebText sample text dumps (`openwebtext_sample*_tokens.txt`).
+
+Impacted files/modules:
+
+1. `.gitignore`
+2. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `git status --short` no longer lists local raw data files as unstaged.
+2. Remaining unstaged files are documentation/config updates with manageable file sizes.
+
+Documentation updates:
+
+1. Added this changelog entry.
+
+### 2026-02-28 (OpenWebText sample extraction for root-level reference text)
+
+Summary:
+
+1. Added `openwebtext_sample_3k_4k_tokens.txt` to repository root as a local sample copied from `data/raw/owt_train.txt.gz`.
+2. Selected a contiguous text slice sized to approximately 3k-4k tokens for quick inspection and experimentation.
+
+Impacted files/modules:
+
+1. `openwebtext_sample_3k_4k_tokens.txt`
+2. `docs/DIRECTORY_STRUCTURE.md`
+3. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Local extraction script reported `TOKENS_APPROX=3412` and wrote `149` lines (`17569` bytes) to `openwebtext_sample_3k_4k_tokens.txt`.
+2. `wc -l -c openwebtext_sample_3k_4k_tokens.txt` confirmed file shape (`149` lines, `17569` bytes).
+
+Documentation updates:
+
+1. Updated `docs/DIRECTORY_STRUCTURE.md` to include the new tracked root file and refreshed generation date.
+2. Added this changelog entry.
+
 ### 2026-02-27 (OWT tokenizer input path correction)
 
 Summary:

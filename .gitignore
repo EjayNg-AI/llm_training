@@ -106,6 +106,7 @@ models/
 !data/
 !data/.gitkeep
 !data/raw/
+data/raw/*
 !data/raw/.gitkeep
 !data/processed/
 !data/processed/.gitkeep
@@ -129,3 +130,6 @@ Thumbs.db
 *.log
 *.tmp
 *.swp
+
+# Local raw dataset samples
+openwebtext_sample*_tokens.txt

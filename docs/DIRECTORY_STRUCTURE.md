@@ -1,6 +1,6 @@
 # Repository directory structure
 
-Generated from `git ls-files` on 2026-02-27.
+Generated from `git ls-files` on 2026-02-28.
 
 This is the canonical tracked structure of the repository as documented in `AGENTS.md`.
 
@@ -65,6 +65,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - data_collection_report.md
 - llm_training_overview.md
 - manual_tokenizer_training_commands.md
+- openwebtext_sample_3k_4k_tokens.txt
 - pytest.ini
 - requirements.txt
 - scripts/
