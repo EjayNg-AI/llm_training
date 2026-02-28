@@ -1,0 +1,9 @@
+{
+  "config_hash": "cd55db9c2f1afc0436ed359bc7a4f2612fbe8943de0b91f4680b8d4711a3a25b",
+  "final_merge_index": 31742,
+  "num_merges": 31742,
+  "pattern_hash": "0a10b5fe5e3bbecbc850fda5259aeb5dc3da062c22f6b526252f12ef00ee3667",
+  "run_dir": "artifacts/tokenizer/runs/20260227_041440",
+  "training_corpus_sha256": "99761eb96c85330ab82c1a4656e6e81bfc7953c5aa8f1a5f5ea460c44fd28edc",
+  "vocab_size": 32000
+}

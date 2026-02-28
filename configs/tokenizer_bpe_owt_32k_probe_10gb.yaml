@@ -7,7 +7,7 @@ run:
 
 data:
   input_paths:
-    - "data/raw/owt_train.txt.gz"
+    - "data/raw/owt_train.txt"
   input_format: "text"
   jsonl_text_field: "text"
   decode_errors: "replace"

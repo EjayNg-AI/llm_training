@@ -14,6 +14,27 @@ Format:
 
 ## Unreleased
 
+### 2026-02-27 (OWT tokenizer input path correction)
+
+Summary:
+
+1. Updated OpenWebText tokenizer run configs to target `data/raw/owt_train.txt` instead of `data/raw/owt_train.txt.gz`.
+2. Aligned OWT config input paths with the repository's documented OWT setup flow in `README.md`.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_owt_32k.yaml`
+2. `configs/tokenizer_bpe_owt_32k_probe_10gb.yaml`
+3. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `rg -n "owt_train\\.txt(\\.gz)?" configs/tokenizer_bpe_owt_32k*.yaml` confirms both configs now point to `.txt`.
+
+Documentation updates:
+
+1. Added this changelog entry documenting the OWT input-path correction.
+
 ### 2026-02-27 (Tokenizer Stage 03 scaling telemetry, checkpoint instrumentation, and report generation)
 
 Summary:

@@ -1,0 +1,9 @@
+{
+  "config_hash": "aa91ce55c0b6c0cc4b27def6ad8d87b8b2d557f53d1a2b029ee10bf8ed9d7ff5",
+  "final_merge_index": 31742,
+  "num_merges": 31742,
+  "pattern_hash": "0a10b5fe5e3bbecbc850fda5259aeb5dc3da062c22f6b526252f12ef00ee3667",
+  "run_dir": "artifacts/tokenizer/runs/owt32k_full_20260227_165243",
+  "training_corpus_sha256": "99761eb96c85330ab82c1a4656e6e81bfc7953c5aa8f1a5f5ea460c44fd28edc",
+  "vocab_size": 32000
+}
