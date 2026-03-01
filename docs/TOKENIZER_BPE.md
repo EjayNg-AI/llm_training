@@ -17,10 +17,13 @@ python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml
 OpenWebText 32k example:
 
 ```bash
+RUN_ID="owt32k_full_25m_$(date -u +%Y%m%d_%H%M%S)"
+ARTIFACT_ID="tokenizer_${RUN_ID}"
+
 python scripts/03_train_tokenizer.py \
   --config configs/tokenizer_bpe_owt_32k.yaml \
-  --run-id owt32k_run01 \
-  --artifact-id tokenizer_owt_32k_run01
+  --run-id "${RUN_ID}" \
+  --artifact-id "${ARTIFACT_ID}"
 ```
 
 Optional A/B stability comparison + report regeneration:
@@ -67,7 +70,13 @@ Config sources:
 
 1. `configs/tokenizer_bpe.yaml`
 2. `configs/tokenizer_bpe_owt_32k.yaml`
-3. defaults in `scripts/tokenizer_bpe/config.py`
+3. `configs/tokenizer_bpe_owt_32k_probe_1gb.yaml`
+4. defaults in `scripts/tokenizer_bpe/config.py`
+
+Current OWT presets (`configs/tokenizer_bpe_owt_32k.yaml` and `configs/tokenizer_bpe_owt_32k_probe_1gb.yaml`) set:
+
+1. `data.max_unique_pieces = 2500000`
+2. `bpe.max_word_types = 2500000`
 
 Top-level config sections:
 
@@ -99,7 +108,7 @@ It additionally includes:
 
 1. environment snapshot (`os`, `platform_mode`, CPU, RAM, Python, regex)
 2. scale-sensitive config snapshot
-3. Stage 1 metrics (`total_bytes_processed`, `total_pieces_seen`, cap/coverage metrics, RSS)
+3. Stage 1 metrics (`total_bytes_processed`, `total_pieces_seen`, cap/coverage metrics including cap-engagement events, RSS)
 4. Stage 2 metrics (`word_types_total/kept`, cutoff, symbol-length stats, RSS)
 5. Stage 3 metrics (merge latency, pair-state pressure, candidate stats, RSS, checkpoint overhead)
 6. optional `ab_stability` section from A/B comparison utility
@@ -127,6 +136,8 @@ Determinism-critical contracts:
 3. Drops pieces longer than `bpe.max_piece_bytes`.
 4. Applies deterministic top-K approximation by `data.max_unique_pieces`.
 5. Emits cap-boundary and coverage metrics for scaling analysis.
+6. `hit_max_unique_pieces` is triggered by cap engagement during streaming/final truncation, not by post-cap final inventory shape.
+7. `unique_before_prune` is reported as a pre-cap window maximum when `max_unique_pieces` is enabled.
 
 ### Stage 2 (`scripts/tokenizer_bpe/stage2_init.py`)
 

@@ -53,5 +53,33 @@ def test_stage1_count_returns_scaling_metrics(tmp_path, tokenizer_logger):
     assert meta["stage1_elapsed_seconds"] >= 0
     assert 0.0 <= meta["coverage"] <= 1.0
     assert meta["unique_before_prune"] >= meta["unique_kept"]
+    assert meta["hit_max_unique_pieces"] is False
+    assert meta["max_unique_pieces_cap_events"] == 0
     assert meta["rss_peak_mb"] >= 0
 
+
+def test_stage1_count_marks_unique_cap_engagement(tmp_path, tokenizer_logger):
+    corpus_path = tmp_path / "train.txt"
+    corpus_path.write_text("\n".join(f"token_{i}" for i in range(100)) + "\n", encoding="utf-8")
+    cfg = _cfg(str(corpus_path))
+    cfg["data"]["max_unique_pieces"] = 8
+    cfg["data"]["batch_lines"] = 200
+    _, pattern_str, pattern_flags, _ = resolve_pattern(cfg["pretokenizer"])
+
+    original_executor = stage1_count_module.ProcessPoolExecutor
+    stage1_count_module.ProcessPoolExecutor = ThreadPoolExecutor
+    try:
+        _, meta = count_pieces(
+            cfg=cfg,
+            run_dir=tmp_path / "run",
+            pattern_str=pattern_str,
+            pattern_flags=pattern_flags,
+            pattern_hash="unused",
+            logger=tokenizer_logger,
+        )
+    finally:
+        stage1_count_module.ProcessPoolExecutor = original_executor
+
+    assert meta["hit_max_unique_pieces"] is True
+    assert meta["max_unique_pieces_cap_events"] >= 1
+    assert meta["unique_before_prune"] > meta["unique_kept"]

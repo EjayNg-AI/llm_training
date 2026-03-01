@@ -1,0 +1,9 @@
+{
+  "config_hash": "e9e3034f611c0a5c7f0309ca75d4d59e1a95e31afc75c54bb25fb18edb63e9ff",
+  "final_merge_index": 31742,
+  "num_merges": 31742,
+  "pattern_hash": "0a10b5fe5e3bbecbc850fda5259aeb5dc3da062c22f6b526252f12ef00ee3667",
+  "run_dir": "artifacts/tokenizer/runs/owt32k_probe_1gb_25m_20260301_060954",
+  "training_corpus_sha256": "663f182b09a3212d9631edccac3881d198c0f3d5e5eeb7914d3911ab17d5f36e",
+  "vocab_size": 32000
+}

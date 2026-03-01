@@ -12,7 +12,7 @@ data:
   jsonl_text_field: "text"
   decode_errors: "replace"
   normalize: "none"
-  max_bytes: 10737418240
+  max_bytes: 1073741824
   max_lines: null
   num_workers: 4
   batch_lines: 2000

@@ -1,0 +1,32 @@
+{
+  "artifact_id": "tokenizer_owt32k_full_25m_20260301_030751",
+  "artifact_type": "tokenizer",
+  "checksums": {
+    "merges.txt": "219ac145498204ba200d8366523e1c317f3a195cb6f62e3d59273e7edc2fd5bb",
+    "special_tokens_map.json": "3c6bf7c09d5473c303cee8575a22bb51e5153c17d177a721b43cd4785c6d09ae",
+    "tokenizer_config.json": "e5789f796df3cff078e0eb06262e5c4844224c1e7d4b2beddd362a80410a9786",
+    "training_stats.json": "b57c50bb1d6f51efcda4df48709d31781edf50d54c7614978fd1d1091de641da",
+    "vocab.json": "2eb011ad0f9f51ebb5b72984642a11497518b9ab9fa2eddc6c12304ca962918f"
+  },
+  "config_hash": "b880477faf4ad0964502951aaab6fd87626f5ce63ab73ff0cec6aa0b68f184dc",
+  "created_at": "2026-03-01T03:41:57Z",
+  "git_commit": "f252d466161cd2f75d7c6a3b2779762f1a815105",
+  "inputs": [
+    {
+      "artifact_id": "training_corpus",
+      "artifact_type": "raw_files",
+      "hash": "663f182b09a3212d9631edccac3881d198c0f3d5e5eeb7914d3911ab17d5f36e"
+    }
+  ],
+  "schema_version": "1.0",
+  "source_run_id": "owt32k_full_25m_20260301_030751",
+  "stats": {
+    "elapsed_seconds": 2022.1348429220002,
+    "export_dir": "artifacts/tokenizer/exports/tokenizer_owt32k_full_25m_20260301_030751",
+    "num_merges": 31742,
+    "pattern_alias": "gpt2_fast",
+    "pattern_hash": "0a10b5fe5e3bbecbc850fda5259aeb5dc3da062c22f6b526252f12ef00ee3667",
+    "training_corpus_sha256": "663f182b09a3212d9631edccac3881d198c0f3d5e5eeb7914d3911ab17d5f36e",
+    "vocab_size": 32000
+  }
+}

@@ -96,10 +96,23 @@ python scripts/08_eval.py --config configs/eval.yaml
 ```bash
 mkdir -p data/raw
 mv owt_train.txt data/raw/owt_train.txt
+# If you only have data/raw/owt_train.txt.gz, generate owt_train.txt once:
+# gunzip -c data/raw/owt_train.txt.gz > data/raw/owt_train.txt
+# Probe first (1GB):
+PROBE_RUN_ID="owt32k_probe_1gb_25m_$(date -u +%Y%m%d_%H%M%S)"
+PROBE_ARTIFACT_ID="tokenizer_${PROBE_RUN_ID}"
+python scripts/03_train_tokenizer.py \
+  --config configs/tokenizer_bpe_owt_32k_probe_1gb.yaml \
+  --run-id "${PROBE_RUN_ID}" \
+  --artifact-id "${PROBE_ARTIFACT_ID}"
+
+# Then full run:
+FULL_RUN_ID="owt32k_full_25m_$(date -u +%Y%m%d_%H%M%S)"
+FULL_ARTIFACT_ID="tokenizer_${FULL_RUN_ID}"
 python scripts/03_train_tokenizer.py \
   --config configs/tokenizer_bpe_owt_32k.yaml \
-  --run-id owt32k_run01 \
-  --artifact-id tokenizer_owt_32k_run01
+  --run-id "${FULL_RUN_ID}" \
+  --artifact-id "${FULL_ARTIFACT_ID}"
 ```
 
 Tokenizer run outputs now include:

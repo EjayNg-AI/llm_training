@@ -159,9 +159,12 @@ def count_pieces(
     num_workers = int(data_cfg["num_workers"])
     batch_lines = int(data_cfg["batch_lines"])
     max_unique_pieces = data_cfg["max_unique_pieces"]
+    cap_limit = int(max_unique_pieces) if max_unique_pieces is not None else None
     stage1_started = perf_counter()
     rss = RssSampler()
     rss.sample()
+    cap_engagement_events = 0
+    unique_before_cap_window_max = 0
 
     logger.info(
         "Stage 1 starting: files=%s workers=%s batch_lines=%s",
@@ -252,8 +255,12 @@ def count_pieces(
 
                         # Keep a single deterministic approximation knob in Stage 1:
                         # optional top-K capping by absolute count.
-                        if max_unique_pieces is not None and merged_batches % 100 == 0 and total_lines_processed >= 10000:
-                            piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
+                        if cap_limit is not None and merged_batches % 100 == 0 and total_lines_processed >= 10000:
+                            pre_cap_unique = len(piece_counts)
+                            unique_before_cap_window_max = max(unique_before_cap_window_max, pre_cap_unique)
+                            if pre_cap_unique > cap_limit:
+                                cap_engagement_events += 1
+                            piece_counts = _counter_top_k(piece_counts, cap_limit)
 
                         if merged_batches % STAGE1_LOG_EVERY_BATCHES == 0:
                             rss.sample()
@@ -264,21 +271,27 @@ def count_pieces(
                                 len(piece_counts),
                             )
 
-    if max_unique_pieces is not None:
-        piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
+    pre_final_cap_unique = len(piece_counts)
+    unique_before_cap_window_max = max(unique_before_cap_window_max, pre_final_cap_unique)
+    if cap_limit is not None:
+        if pre_final_cap_unique > cap_limit:
+            cap_engagement_events += 1
+        piece_counts = _counter_top_k(piece_counts, cap_limit)
     rss.sample()
     stage1_elapsed = max(0.0, perf_counter() - stage1_started)
 
-    unique_before_prune = len(piece_counts)
+    unique_before_prune = unique_before_cap_window_max if cap_limit is not None else len(piece_counts)
     filtered_items = [(piece, int(freq)) for piece, freq in piece_counts.items() if int(freq) >= min_piece_freq]
     filtered_items.sort(key=lambda kv: (-kv[1], kv[0]))
     unique_after_min_freq = len(filtered_items)
-    if max_unique_pieces is None:
+    if cap_limit is None:
         kept_items = filtered_items
         hit_max_unique_pieces = False
     else:
-        kept_items = filtered_items[: int(max_unique_pieces)]
-        hit_max_unique_pieces = unique_after_min_freq > int(max_unique_pieces)
+        kept_items = filtered_items[:cap_limit]
+        # Streaming Stage 1 top-K approximation means cap engagement can happen
+        # before final metadata is computed; track that explicitly.
+        hit_max_unique_pieces = cap_engagement_events > 0
     unique_kept = len(kept_items)
     cutoff_freq = _frequency_cutoff(filtered_items, unique_kept)
     kept_mass = int(sum(freq for _, freq in kept_items))
@@ -302,6 +315,7 @@ def count_pieces(
         "unique_after_min_freq": unique_after_min_freq,
         "unique_kept": unique_kept,
         "hit_max_unique_pieces": hit_max_unique_pieces,
+        "max_unique_pieces_cap_events": cap_engagement_events,
         "cutoff_freq_at_unique_cap": cutoff_freq,
         "kept_mass": kept_mass,
         "coverage": coverage,

@@ -14,6 +14,93 @@ Format:
 
 ## Unreleased
 
+### 2026-03-01 (Add dedicated 1GB OWT probe config and probe->full command sequence)
+
+Summary:
+
+1. Added a dedicated OpenWebText tokenizer probe config capped at 1 GiB (`1073741824` bytes).
+2. Updated user-facing runbook commands to use the 1GB probe before full-run execution.
+3. Added an explicit probe->full->A/B command sequence for repeatable comparison workflow.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_owt_32k_probe_1gb.yaml`
+2. `manual_tokenizer_training_commands.md`
+3. `README.md`
+4. `docs/TOKENIZER_BPE.md`
+5. `docs/DIRECTORY_STRUCTURE.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python - <<'PY' ...` YAML parse check confirmed `configs/tokenizer_bpe_owt_32k_probe_1gb.yaml` loads and `data.max_bytes == 1073741824`.
+
+Documentation updates:
+
+1. Updated probe/full command sequence in `manual_tokenizer_training_commands.md`.
+2. Updated quick-start OWT command flow in `README.md`.
+3. Updated tokenizer config references in `docs/TOKENIZER_BPE.md`.
+4. Updated tracked file snapshot in `docs/DIRECTORY_STRUCTURE.md`.
+5. Added this changelog entry.
+
+### 2026-03-01 (Fix Stage 1 unique-cap telemetry semantics)
+
+Summary:
+
+1. Fixed Stage 1 cap telemetry so `hit_max_unique_pieces` now reflects actual cap engagement during streaming/final truncation, instead of checking only post-cap inventory shape.
+2. Added `max_unique_pieces_cap_events` to Stage 1 metadata to quantify how many cap events were observed.
+3. Clarified Stage 1 report output by labeling unique-count telemetry as pre-cap windowed behavior.
+4. Added regression coverage to ensure cap engagement is detected when `max_unique_pieces` is set below observed uniqueness.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/stage1_count.py`
+2. `scripts/tokenizer_bpe/report_data_collection.py`
+3. `tests/tokenizer_bpe/test_stage1_metrics.py`
+4. `docs/TOKENIZER_BPE.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_stage1_metrics.py tests/tokenizer_bpe/test_report_data_collection.py tests/tokenizer_bpe/test_stage1_count_unit.py` passed (`8 passed`).
+
+Documentation updates:
+
+1. Updated Stage 1 telemetry semantics in `docs/TOKENIZER_BPE.md`.
+2. Updated Stage 03 implemented-step notes in `docs/IMPLEMENTED_STEPS.md`.
+3. Added this changelog entry.
+
+### 2026-03-01 (OWT tokenizer cap increase to 2.5M and next-run command refresh)
+
+Summary:
+
+1. Increased OpenWebText tokenizer Stage 1 cap `data.max_unique_pieces` from `2000000` to `2500000`.
+2. Increased OpenWebText tokenizer Stage 2 cap `bpe.max_word_types` from `1500000` to `2500000`.
+3. Refreshed OWT tokenizer command examples to use timestamped `*_25m_*` run IDs for a clean next run on `data/raw/owt_train.txt`.
+4. Added one-time prep guidance to generate `data/raw/owt_train.txt` from `data/raw/owt_train.txt.gz` when only the gzip file is present.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_owt_32k.yaml`
+2. `configs/tokenizer_bpe_owt_32k_probe_10gb.yaml`
+3. `README.md`
+4. `docs/TOKENIZER_BPE.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `manual_tokenizer_training_commands.md`
+7. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `rg -n "max_unique_pieces|max_word_types" configs/tokenizer_bpe_owt_32k*.yaml` confirms both OWT configs now use `2500000` for both caps.
+
+Documentation updates:
+
+1. Updated OWT training command examples in `README.md` and `docs/TOKENIZER_BPE.md`.
+2. Updated Stage 03 implementation notes in `docs/IMPLEMENTED_STEPS.md` for the current OWT preset caps.
+3. Updated manual runbook run-id prefixes and OWT `.gz` -> `.txt` prep snippet in `manual_tokenizer_training_commands.md`.
+4. Added this changelog entry.
+
 ### 2026-02-28 (Ignore local raw data payloads in git status)
 
 Summary:
