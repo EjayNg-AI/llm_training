@@ -14,6 +14,35 @@ Format:
 
 ## Unreleased
 
+### 2026-03-01 (Add Stage 1 cap-eviction telemetry for max-unique enforcement)
+
+Summary:
+
+1. Added Stage 1 counters for cumulative key evictions and cumulative frequency mass evicted during `max_unique_pieces` enforcement.
+2. Added derived Stage 1 metrics for `evicted_mass_ratio` and `max_unique_seen` in run statistics.
+3. Extended the Stage 1 markdown data-collection report table to include cap-eviction metrics.
+4. Added regression assertions for non-binding and binding cap scenarios.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/stage1_count.py`
+2. `scripts/tokenizer_bpe/report_data_collection.py`
+3. `tests/tokenizer_bpe/test_stage1_metrics.py`
+4. `tests/tokenizer_bpe/test_report_data_collection.py`
+5. `docs/TOKENIZER_BPE.md`
+6. `docs/IMPLEMENTED_STEPS.md`
+7. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_stage1_metrics.py tests/tokenizer_bpe/test_report_data_collection.py tests/tokenizer_bpe/test_stage1_count_unit.py` passed (`8 passed`).
+
+Documentation updates:
+
+1. Updated Stage 1 telemetry contract and notes in `docs/TOKENIZER_BPE.md`.
+2. Updated Stage 03 implemented-step telemetry notes in `docs/IMPLEMENTED_STEPS.md`.
+3. Added this changelog entry.
+
 ### 2026-03-01 (Add dedicated 1GB OWT probe config and probe->full command sequence)
 
 Summary:

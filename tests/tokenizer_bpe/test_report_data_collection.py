@@ -36,9 +36,14 @@ def _sample_stats() -> dict:
         "stage1": {
             "total_bytes_processed": 1000,
             "total_pieces_seen": 500,
+            "max_unique_seen": 100,
             "unique_before_prune": 100,
             "unique_kept": 90,
             "hit_max_unique_pieces": False,
+            "max_unique_pieces_cap_events": 0,
+            "evicted_keys_total": 0,
+            "evicted_mass_total": 0,
+            "evicted_mass_ratio": 0.0,
             "cutoff_freq_at_unique_cap": 1,
             "coverage": 0.99,
             "rss_peak_mb": 123.4,
@@ -91,6 +96,10 @@ def test_render_data_collection_report_contains_required_sections():
     assert "### Stage 2" in report
     assert "### Stage 3" in report
     assert "## A/B Stability" in report
+    assert "max_unique_seen" in report
+    assert "evicted_keys_total" in report
+    assert "evicted_mass_total" in report
+    assert "evicted_mass_ratio" in report
 
 
 def test_write_data_collection_report_creates_file(tmp_path: Path):
@@ -98,4 +107,3 @@ def test_write_data_collection_report_creates_file(tmp_path: Path):
     write_data_collection_report(_sample_stats(), out)
     assert out.exists()
     assert "Tokenizer Data Collection Report" in out.read_text(encoding="utf-8")
-

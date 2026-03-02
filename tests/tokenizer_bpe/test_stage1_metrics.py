@@ -53,8 +53,12 @@ def test_stage1_count_returns_scaling_metrics(tmp_path, tokenizer_logger):
     assert meta["stage1_elapsed_seconds"] >= 0
     assert 0.0 <= meta["coverage"] <= 1.0
     assert meta["unique_before_prune"] >= meta["unique_kept"]
+    assert meta["max_unique_seen"] == meta["unique_before_prune"]
     assert meta["hit_max_unique_pieces"] is False
     assert meta["max_unique_pieces_cap_events"] == 0
+    assert meta["evicted_keys_total"] == 0
+    assert meta["evicted_mass_total"] == 0
+    assert meta["evicted_mass_ratio"] == 0.0
     assert meta["rss_peak_mb"] >= 0
 
 
@@ -82,4 +86,8 @@ def test_stage1_count_marks_unique_cap_engagement(tmp_path, tokenizer_logger):
 
     assert meta["hit_max_unique_pieces"] is True
     assert meta["max_unique_pieces_cap_events"] >= 1
+    assert meta["max_unique_seen"] >= meta["unique_before_prune"]
     assert meta["unique_before_prune"] > meta["unique_kept"]
+    assert meta["evicted_keys_total"] > 0
+    assert meta["evicted_mass_total"] > 0
+    assert 0.0 < meta["evicted_mass_ratio"] <= 1.0

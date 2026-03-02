@@ -108,7 +108,7 @@ It additionally includes:
 
 1. environment snapshot (`os`, `platform_mode`, CPU, RAM, Python, regex)
 2. scale-sensitive config snapshot
-3. Stage 1 metrics (`total_bytes_processed`, `total_pieces_seen`, cap/coverage metrics including cap-engagement events, RSS)
+3. Stage 1 metrics (`total_bytes_processed`, `total_pieces_seen`, cap/coverage metrics including cap-engagement events, cumulative cap eviction metrics, RSS)
 4. Stage 2 metrics (`word_types_total/kept`, cutoff, symbol-length stats, RSS)
 5. Stage 3 metrics (merge latency, pair-state pressure, candidate stats, RSS, checkpoint overhead)
 6. optional `ab_stability` section from A/B comparison utility
@@ -138,6 +138,8 @@ Determinism-critical contracts:
 5. Emits cap-boundary and coverage metrics for scaling analysis.
 6. `hit_max_unique_pieces` is triggered by cap engagement during streaming/final truncation, not by post-cap final inventory shape.
 7. `unique_before_prune` is reported as a pre-cap window maximum when `max_unique_pieces` is enabled.
+8. `evicted_keys_total` and `evicted_mass_total` accumulate keys/mass trimmed by deterministic top-K cap enforcement across all cap events.
+9. `evicted_mass_ratio` reports `evicted_mass_total / total_pieces_seen` to quantify discarded Stage 1 mass.
 
 ### Stage 2 (`scripts/tokenizer_bpe/stage2_init.py`)
 

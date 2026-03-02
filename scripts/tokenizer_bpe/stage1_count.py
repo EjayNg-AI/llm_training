@@ -164,6 +164,8 @@ def count_pieces(
     rss = RssSampler()
     rss.sample()
     cap_engagement_events = 0
+    evicted_keys_total = 0
+    evicted_mass_total = 0
     unique_before_cap_window_max = 0
 
     logger.info(
@@ -181,6 +183,21 @@ def count_pieces(
         if max_bytes is not None and total_bytes_processed >= int(max_bytes):
             return True
         return False
+
+    def _apply_unique_cap(counter: Counter[bytes]) -> Counter[bytes]:
+        nonlocal cap_engagement_events, evicted_keys_total, evicted_mass_total
+        if cap_limit is None:
+            return counter
+        n_before = len(counter)
+        if n_before <= cap_limit:
+            return counter
+        cap_engagement_events += 1
+        ranked = sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))
+        keep_items = ranked[:cap_limit]
+        evicted_items = ranked[cap_limit:]
+        evicted_keys_total += len(evicted_items)
+        evicted_mass_total += int(sum(freq for _, freq in evicted_items))
+        return Counter(dict(keep_items))
 
     with ProcessPoolExecutor(
         max_workers=num_workers,
@@ -258,9 +275,7 @@ def count_pieces(
                         if cap_limit is not None and merged_batches % 100 == 0 and total_lines_processed >= 10000:
                             pre_cap_unique = len(piece_counts)
                             unique_before_cap_window_max = max(unique_before_cap_window_max, pre_cap_unique)
-                            if pre_cap_unique > cap_limit:
-                                cap_engagement_events += 1
-                            piece_counts = _counter_top_k(piece_counts, cap_limit)
+                            piece_counts = _apply_unique_cap(piece_counts)
 
                         if merged_batches % STAGE1_LOG_EVERY_BATCHES == 0:
                             rss.sample()
@@ -273,14 +288,12 @@ def count_pieces(
 
     pre_final_cap_unique = len(piece_counts)
     unique_before_cap_window_max = max(unique_before_cap_window_max, pre_final_cap_unique)
-    if cap_limit is not None:
-        if pre_final_cap_unique > cap_limit:
-            cap_engagement_events += 1
-        piece_counts = _counter_top_k(piece_counts, cap_limit)
+    piece_counts = _apply_unique_cap(piece_counts)
     rss.sample()
     stage1_elapsed = max(0.0, perf_counter() - stage1_started)
 
-    unique_before_prune = unique_before_cap_window_max if cap_limit is not None else len(piece_counts)
+    max_unique_seen = unique_before_cap_window_max if cap_limit is not None else len(piece_counts)
+    unique_before_prune = max_unique_seen
     filtered_items = [(piece, int(freq)) for piece, freq in piece_counts.items() if int(freq) >= min_piece_freq]
     filtered_items.sort(key=lambda kv: (-kv[1], kv[0]))
     unique_after_min_freq = len(filtered_items)
@@ -296,6 +309,7 @@ def count_pieces(
     cutoff_freq = _frequency_cutoff(filtered_items, unique_kept)
     kept_mass = int(sum(freq for _, freq in kept_items))
     coverage = float(kept_mass / total_pieces_seen) if total_pieces_seen > 0 else 0.0
+    evicted_mass_ratio = float(evicted_mass_total / total_pieces_seen) if total_pieces_seen > 0 else 0.0
 
     logger.info(
         "Stage 1 complete: lines=%s pieces=%s unique=%s coverage=%.6f elapsed=%.3fs",
@@ -311,11 +325,15 @@ def count_pieces(
         "total_bytes_processed": total_bytes_processed,
         "total_pieces_seen": total_pieces_seen,
         "stage1_elapsed_seconds": stage1_elapsed,
+        "max_unique_seen": max_unique_seen,
         "unique_before_prune": unique_before_prune,
         "unique_after_min_freq": unique_after_min_freq,
         "unique_kept": unique_kept,
         "hit_max_unique_pieces": hit_max_unique_pieces,
         "max_unique_pieces_cap_events": cap_engagement_events,
+        "evicted_keys_total": evicted_keys_total,
+        "evicted_mass_total": evicted_mass_total,
+        "evicted_mass_ratio": evicted_mass_ratio,
         "cutoff_freq_at_unique_cap": cutoff_freq,
         "kept_mass": kept_mass,
         "coverage": coverage,

@@ -84,10 +84,11 @@ def render_data_collection_report(run_stats: dict[str, Any]) -> str:
     lines.append("### Stage 1")
     lines.append("")
     lines.append(
-        "| total_bytes | total_pieces_seen | unique_before_cap_window | unique_kept | hit_cap | cap_events | "
-        "cutoff_freq | coverage | RSS_peak_mb | t_stage1_s |"
+        "| total_bytes | total_pieces_seen | unique_before_cap_window | max_unique_seen | unique_kept | hit_cap | "
+        "cap_events | evicted_keys_total | evicted_mass_total | evicted_mass_ratio | cutoff_freq | coverage | "
+        "RSS_peak_mb | t_stage1_s |"
     )
-    lines.append("|---:|---:|---:|---:|:---:|---:|---:|---:|---:|---:|")
+    lines.append("|---:|---:|---:|---:|---:|:---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     lines.append(
         "| "
         + " | ".join(
@@ -95,9 +96,13 @@ def render_data_collection_report(run_stats: dict[str, Any]) -> str:
                 _fmt_int(stage1.get("total_bytes_processed")),
                 _fmt_int(stage1.get("total_pieces_seen")),
                 _fmt_int(stage1.get("unique_before_prune")),
+                _fmt_int(stage1.get("max_unique_seen")),
                 _fmt_int(stage1.get("unique_kept")),
                 _fmt_bool(stage1.get("hit_max_unique_pieces")),
                 _fmt_int(stage1.get("max_unique_pieces_cap_events")),
+                _fmt_int(stage1.get("evicted_keys_total")),
+                _fmt_int(stage1.get("evicted_mass_total")),
+                _fmt_float(stage1.get("evicted_mass_ratio"), 6),
                 _fmt_int(stage1.get("cutoff_freq_at_unique_cap")),
                 _fmt_float(stage1.get("coverage"), 6),
                 _fmt_float(stage1.get("rss_peak_mb")),
@@ -154,6 +159,10 @@ def render_data_collection_report(run_stats: dict[str, Any]) -> str:
     lines.append(f"- Stage 1 estimated time for 100GB (s): `{_fmt_float(projection.get('estimated_seconds'))}`")
     lines.append(f"- Stage 1 kept_mass: `{_fmt_int(stage1.get('kept_mass'))}`")
     lines.append("- Stage 1 `unique_before_cap_window` is the max pre-cap unique inventory observed in-stream.")
+    lines.append(
+        "- Stage 1 eviction totals are cumulative across cap events; a piece type can be evicted more than once "
+        "if it reappears later."
+    )
     lines.append(f"- Stage 2 elapsed (s): `{_fmt_float(stage2.get('stage2_elapsed_seconds'))}`")
     lines.append(f"- Stage 3 p95 ms/merge: `{_fmt_float(stage3.get('p95_ms_per_merge'))}`")
     lines.append(f"- Stage 3 best_count initial/late: `{_fmt_int(stage3.get('best_count_initial'))}` / `{_fmt_int(stage3.get('best_count_late'))}`")

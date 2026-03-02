@@ -68,7 +68,7 @@ Current behavior:
    - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`) and heap pressure controls
    - deterministic merge/export behavior
    - Stage 1/2/3 scaling telemetry and memory stats
-   - Stage 1 cap-engagement telemetry (`hit_max_unique_pieces`, `max_unique_pieces_cap_events`, pre-cap windowed unique counts)
+   - Stage 1 cap-engagement telemetry (`hit_max_unique_pieces`, `max_unique_pieces_cap_events`, pre-cap windowed unique counts, cap-eviction key/mass totals, evicted-mass ratio)
    - Stage 3 checkpoint instrumentation (WAL + snapshots + overhead timing)
 2. Writes Stage 03 run telemetry and structured run statistics:
    - `training_telemetry.json`
