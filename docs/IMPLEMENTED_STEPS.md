@@ -65,9 +65,11 @@ Current behavior:
    - regex pretokenization
    - Stage 1 multiprocessing piece counting with out-of-order worker completion and deterministic in-order merge application
    - Stage 2/3 compact integer-array state (`array('H'/'I')` words + array-backed freqs)
-   - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`), heap pressure controls, and WAL + snapshot recovery
+   - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`), append-light pair index maintenance, heap pressure controls, and WAL + snapshot recovery
+   - Stage 3 resume hardening with `wal.meta.json` hash binding and stricter WAL replay checks (contiguous merge indices + merge-effect validation)
    - Stage 3 PoC durability defaults (periodic fsync with paranoid per-commit option)
    - deterministic merge/export behavior
+   - low-`vocab_size` floor contract: merge count can be zero while export still includes base 256 bytes plus configured specials
 2. Publishes tokenizer artifacts by artifact ID under `artifacts/tokenizer/exports/<tokenizer_id>/`.
 3. Registers tokenizer artifact with manifest and lineage metadata.
 
@@ -83,7 +85,8 @@ Artifacts:
 Resume contract:
 
 1. `--resume --run-id <run_id>` reuses existing run directory.
-2. Existing tokenizer WAL/snapshot integrity checks still apply.
+2. Resume validates WAL hash binding (`wal.meta.json`) against current `config_hash`/`pattern_hash`.
+3. WAL replay enforces contiguous merge indices and non-noop replay merges.
 
 ## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
 

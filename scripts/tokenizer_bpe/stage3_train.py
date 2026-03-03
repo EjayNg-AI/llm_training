@@ -5,6 +5,7 @@ from __future__ import annotations
 from array import array
 from collections import defaultdict
 import heapq
+import json
 import logging
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ from .io_atomic import atomic_dump_json, atomic_dump_pickle_with_checksum, load_
 PAIR_SHIFT = 32
 PAIR_MASK = (1 << PAIR_SHIFT) - 1
 HEAP_REBUILD_RATIO = 6
+WAL_META_NAME = "wal.meta.json"
 
 
 def make_pair_id(a: int, b: int) -> int:
@@ -147,6 +149,34 @@ def _append_wal_line(handle, line: str) -> None:
     handle.flush()
 
 
+def _apply_word_pair_deltas(
+    word_idx: int,
+    freq: int,
+    old_pairs: dict[int, int],
+    new_pairs: dict[int, int],
+    pair_count: dict[int, int],
+    pair_to_words: dict[int, list[int]],
+    heap: list[tuple[int, int]],
+) -> None:
+    all_local_pair_ids = set(old_pairs.keys()) | set(new_pairs.keys())
+    for pair_id in all_local_pair_ids:
+        delta = (new_pairs.get(pair_id, 0) - old_pairs.get(pair_id, 0)) * freq
+        if delta == 0:
+            continue
+        updated = pair_count.get(pair_id, 0) + delta
+        if updated <= 0:
+            pair_count.pop(pair_id, None)
+            pair_to_words.pop(pair_id, None)
+        else:
+            pair_count[pair_id] = updated
+            heapq.heappush(heap, (-updated, pair_id))
+
+    # Keep candidate lists append-light by indexing only locally new pairs for this word.
+    new_local_pair_ids = set(new_pairs.keys()) - set(old_pairs.keys())
+    for pair_id in new_local_pair_ids:
+        pair_to_words.setdefault(pair_id, []).append(word_idx)
+
+
 def _fsync_wal(handle) -> None:
     os.fsync(handle.fileno())
 
@@ -173,6 +203,25 @@ def parse_wal_commits(wal_path: Path) -> list[tuple[int, int, int, int]]:
                     commits.append((merge_idx, a, b, new_id))
     commits.sort(key=lambda x: x[0])
     return commits
+
+
+def _load_wal_metadata(wal_meta_path: Path) -> dict[str, str] | None:
+    if not wal_meta_path.exists():
+        return None
+    payload = json.loads(wal_meta_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"WAL metadata is not a JSON object: {wal_meta_path}")
+    return payload
+
+
+def _write_wal_metadata(wal_meta_path: Path, config_hash: str, pattern_hash: str) -> None:
+    atomic_dump_json(
+        wal_meta_path,
+        {
+            "config_hash": config_hash,
+            "pattern_hash": pattern_hash,
+        },
+    )
 
 
 def _write_metrics_line(metrics_path: Path, payload: dict[str, Any]) -> None:
@@ -265,6 +314,7 @@ def train_bpe(
 
     snapshot_dir = run_dir / "snapshots"
     wal_path = run_dir / "merges.wal"
+    wal_meta_path = run_dir / WAL_META_NAME
     metrics_path = run_dir / "metrics.jsonl"
     state_json_path = run_dir / "state.json"
 
@@ -291,20 +341,67 @@ def train_bpe(
             logger.info("Resume loaded snapshot at merge %s", last_merge)
 
         wal_commits = parse_wal_commits(wal_path)
+        wal_metadata = _load_wal_metadata(wal_meta_path)
+        if wal_metadata is not None:
+            wal_config_hash = wal_metadata.get("config_hash")
+            wal_pattern_hash = wal_metadata.get("pattern_hash")
+            if wal_config_hash != config_hash or wal_pattern_hash != pattern_hash:
+                raise ValueError(
+                    "WAL metadata mismatch for resume: "
+                    f"wal(config_hash={wal_config_hash}, pattern_hash={wal_pattern_hash}) vs "
+                    f"run(config_hash={config_hash}, pattern_hash={pattern_hash})"
+                )
+        elif wal_commits and snapshot_state is None:
+            raise ValueError(
+                "Cannot safely replay WAL without compatible snapshot or WAL metadata. "
+                "Run a fresh training job with a new run_id."
+            )
+        elif wal_commits:
+            # Legacy runs may have snapshots/WAL but no metadata file.
+            _write_wal_metadata(wal_meta_path, config_hash, pattern_hash)
+
+        expected_merge_idx = last_merge + 1
         for merge_idx, a, b, wal_new_id in wal_commits:
             if merge_idx <= last_merge:
                 continue
+            if merge_idx != expected_merge_idx:
+                raise ValueError(
+                    f"WAL merge index mismatch: got merge {merge_idx}, expected {expected_merge_idx}"
+                )
+            expected_merge_idx += 1
             expected_new_id = len(id_to_token_bytes)
             if wal_new_id != expected_new_id:
                 raise ValueError(
                     f"WAL new_id mismatch at merge {merge_idx}: wal={wal_new_id}, expected={expected_new_id}"
                 )
+            if a >= expected_new_id or b >= expected_new_id:
+                raise ValueError(
+                    f"WAL pair references out-of-range token ids at merge {merge_idx}: "
+                    f"pair=({a},{b}), vocab_size={expected_new_id}"
+                )
             id_to_token_bytes.append(id_to_token_bytes[a] + id_to_token_bytes[b])
-            _apply_merge_everywhere(words, a, b, wal_new_id, word_storage_type)
+            replay_affected = _apply_merge_everywhere(words, a, b, wal_new_id, word_storage_type)
+            if replay_affected == 0:
+                raise ValueError(
+                    f"WAL replay merge {merge_idx} had no effect; state and WAL are inconsistent."
+                )
             merge_pairs.append((a, b))
             last_merge = merge_idx
         if wal_commits:
             logger.info("Resume replayed WAL to merge %s", last_merge)
+
+    wal_metadata = _load_wal_metadata(wal_meta_path)
+    if wal_metadata is None:
+        _write_wal_metadata(wal_meta_path, config_hash, pattern_hash)
+    else:
+        wal_config_hash = wal_metadata.get("config_hash")
+        wal_pattern_hash = wal_metadata.get("pattern_hash")
+        if wal_config_hash != config_hash or wal_pattern_hash != pattern_hash:
+            raise ValueError(
+                "WAL metadata mismatch for run: "
+                f"wal(config_hash={wal_config_hash}, pattern_hash={wal_pattern_hash}) vs "
+                f"run(config_hash={config_hash}, pattern_hash={pattern_hash})"
+            )
 
     pair_count, pair_to_words, heap = _build_pair_structures(words, freqs)
     logger.info("Stage 3 initialized: unique_pairs=%s", len(pair_count))
@@ -364,21 +461,16 @@ def train_bpe(
                 new_pairs = count_adjacent_pairs(new_symbols)
                 affected_words += 1
 
-                all_local_pair_ids = set(old_pairs.keys()) | set(new_pairs.keys())
                 freq = int(freqs[word_idx])
-                for pair_id in all_local_pair_ids:
-                    delta = (new_pairs.get(pair_id, 0) - old_pairs.get(pair_id, 0)) * freq
-                    if delta == 0:
-                        continue
-                    updated = pair_count.get(pair_id, 0) + delta
-                    if updated <= 0:
-                        pair_count.pop(pair_id, None)
-                    else:
-                        pair_count[pair_id] = updated
-                        heapq.heappush(heap, (-updated, pair_id))
-
-                for pair_id in new_pairs.keys():
-                    pair_to_words[pair_id].append(word_idx)
+                _apply_word_pair_deltas(
+                    word_idx=word_idx,
+                    freq=freq,
+                    old_pairs=old_pairs,
+                    new_pairs=new_pairs,
+                    pair_count=pair_count,
+                    pair_to_words=pair_to_words,
+                    heap=heap,
+                )
 
             pair_count.pop(merged_pair_id, None)
             merge_pairs.append((a, b))

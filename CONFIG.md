@@ -67,6 +67,8 @@ Notes:
 ## `bpe`
 
 - `vocab_size`: target exported vocab size (base bytes + merges + specials)
+  - Floor edge case: when `vocab_size < 256 + len(special_tokens.tokens)`, Stage 3 can perform zero merges.
+  - In that edge case, export still includes all 256 byte tokens plus all configured special tokens, so final exported vocab can exceed requested `vocab_size`.
 - `min_merge_freq`: stop training if best pair count drops below this threshold
 - `max_merges`: override merge count directly (if null, derived from `vocab_size`)
 - `max_word_types`: cap unique piece inventory after deterministic sorting

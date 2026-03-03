@@ -39,8 +39,8 @@ special_tokens:
 
 checkpointing:
   wal_fsync_each_commit: false
-  wal_fsync_every_commits: 50
-  snapshot_every_merges: 200
+  wal_fsync_every_commits: 250
+  snapshot_every_merges: 2000
   snapshot_every_seconds: 300
   keep_last_snapshots: 3
-  stage1_snapshot_every_batches: 50
+  stage1_snapshot_every_batches: 500

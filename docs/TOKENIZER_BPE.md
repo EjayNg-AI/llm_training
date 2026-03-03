@@ -105,7 +105,7 @@ for word_idx in pair_to_words[pair_id]:
 Implementation notes for SWE teams:
 
 1. Pair counts are maintained incrementally (not fully recomputed each merge).
-2. `pair_to_words` is lazy append-heavy with duplicate/stale filtering; merged-pair lists are deleted after each merge.
+2. `pair_to_words` uses append-light updates plus duplicate/stale filtering; merged-pair lists are deleted after each merge.
 3. Trainer stops when no valid pair remains, `best_count < min_merge_freq`, or merge target is reached.
 
 ### 4) Special tokens
@@ -172,6 +172,7 @@ Run directory structure:
 - `checkpoints/word_counts.snapshot.pkl`
 - `checkpoints/word_counts.progress.json`
 - `merges.wal`
+- `wal.meta.json`
 - `snapshots/state.mXXXXXXXX.pkl` (+ `.sha256`)
 - `state.json`
 - `metrics.jsonl`
@@ -269,11 +270,11 @@ special_tokens:
 
 checkpointing:
   wal_fsync_each_commit: false
-  wal_fsync_every_commits: 50
-  snapshot_every_merges: 200
+  wal_fsync_every_commits: 250
+  snapshot_every_merges: 2000
   snapshot_every_seconds: 300
   keep_last_snapshots: 3
-  stage1_snapshot_every_batches: 50
+  stage1_snapshot_every_batches: 500
 ```
 
 Validation rules currently enforced:
@@ -284,7 +285,8 @@ Validation rules currently enforced:
 4. `special_tokens.placement` in `{start, end}`.
 5. `bpe.tie_break` must be `lexicographic`.
 6. `data.num_workers >= 1`, `data.batch_lines >= 1`, `bpe.vocab_size >= 256`.
-7. `checkpointing.wal_fsync_every_commits >= 0`.
+7. `bpe.max_merges >= 0` when provided.
+8. `checkpointing.wal_fsync_every_commits >= 0`.
 
 Determinism hashes:
 
@@ -535,7 +537,7 @@ Pair index structures:
 
 1. `pair_id = (a << 32) | b`
 2. `pair_count[pair_id] -> weighted frequency`
-3. `pair_to_words[pair_id] -> list[word_idx]` (lazy append-heavy; merged pair list removed after use)
+3. `pair_to_words[pair_id] -> list[word_idx]` (merged pair list removed after use; stale entries are lazily deduped at merge time)
 4. max-heap entries `(-count, pair_id)` for deterministic best-pair selection
 
 Weighted pair count definition:
@@ -547,14 +549,19 @@ Initial construction contract:
 1. For each word type `words[idx]`, compute local adjacent-pair multiplicities with `count_adjacent_pairs`.
 2. For each local pair `pair_id` with local count `occ`, add `freqs[idx] * occ` to `pair_count[pair_id]`.
 3. Append `idx` to `pair_to_words[pair_id]` once for that word during initial build, even if `occ > 1`.
-4. During later incremental updates, `pair_to_words` may contain duplicate/stale word indices; merge step deduplicates with `seen_word_indices`.
+4. During later incremental updates, merge step deduplicates candidate indices with `seen_word_indices`.
+5. If a pair's global count drops to non-positive, remove it from both `pair_count` and `pair_to_words`.
 
 ### 9.2 Target merge count
 
-If `bpe.max_merges` is set, it is used directly.
+If `bpe.max_merges` is set, it is used directly (and must be non-negative; config validation rejects negative values).
 Otherwise:
 
 `target_merges = max(0, bpe.vocab_size - 256 - len(special_tokens))`
+
+Edge case:
+
+If `bpe.vocab_size < 256 + len(special_tokens)`, Stage 3 can perform zero merges, but export still includes all 256 byte tokens plus all configured special tokens.
 
 ### 9.3 Best-pair selection
 
@@ -604,7 +611,7 @@ For each candidate word:
 5. count local new pairs.
 6. apply pair deltas weighted by `freqs[word_idx]`.
 7. push updated pair counts to heap.
-8. append word index to `pair_to_words` for all pairs now present.
+8. append word index to `pair_to_words` only for pairs newly introduced in that word (`new_pairs - old_pairs`).
 9. occasionally rebuild heap when `len(heap)` grows too large relative to `len(pair_count)`.
 
 Core transformation:
@@ -653,14 +660,18 @@ Additional state output:
 Resume uses this order:
 
 1. load latest valid snapshot matching `config_hash` and `pattern_hash`.
-2. parse WAL commits (`BEGIN`+`COMMIT` matched by merge index).
-3. replay committed WAL merges beyond snapshot merge index.
-4. rebuild `pair_count`, `pair_to_words`, and heap from replayed `words`.
+2. validate `wal.meta.json` hash binding (`config_hash`, `pattern_hash`) when present.
+3. parse WAL commits (`BEGIN`+`COMMIT` matched by merge index).
+4. replay committed WAL merges beyond snapshot merge index.
+5. rebuild `pair_count`, `pair_to_words`, and heap from replayed `words`.
 
 WAL replay safety checks:
 
 1. ignores in-flight BEGIN records without COMMIT.
 2. enforces `wal_new_id == len(id_to_token_bytes)` at each replayed merge.
+3. enforces contiguous replay indices (`last_merge + 1`, no gaps/duplicates after snapshot boundary).
+4. enforces that each replayed merge updates at least one word type (detects divergent state/WAL).
+5. if no compatible snapshot exists, replay from WAL requires valid `wal.meta.json`; otherwise resume fails fast.
 
 Durability model:
 

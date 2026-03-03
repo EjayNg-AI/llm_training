@@ -50,11 +50,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "checkpointing": {
         "wal_fsync_each_commit": False,
-        "wal_fsync_every_commits": 50,
-        "snapshot_every_merges": 200,
+        "wal_fsync_every_commits": 250,
+        "snapshot_every_merges": 2000,
         "snapshot_every_seconds": 300,
         "keep_last_snapshots": 3,
-        "stage1_snapshot_every_batches": 50,
+        "stage1_snapshot_every_batches": 500,
     },
 }
 
@@ -88,6 +88,9 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError("data.batch_lines must be >= 1")
     if int(cfg["bpe"]["vocab_size"]) < 256:
         raise ValueError("bpe.vocab_size must be >= 256")
+    max_merges = cfg["bpe"].get("max_merges")
+    if max_merges is not None and int(max_merges) < 0:
+        raise ValueError("bpe.max_merges must be >= 0 when provided")
     if int(cfg["checkpointing"].get("wal_fsync_every_commits", 0)) < 0:
         raise ValueError("checkpointing.wal_fsync_every_commits must be >= 0")
 

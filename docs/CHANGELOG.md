@@ -14,6 +14,108 @@ Format:
 
 ## Unreleased
 
+### 2026-03-03 (Ignore local OWT raw training files)
+
+Summary:
+
+1. Added explicit ignore rules for local OpenWebText raw training files so they are not accidentally committed.
+
+Impacted files/modules:
+
+1. `.gitignore`
+2. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `git check-ignore -v data/raw/owt_train.txt data/raw/owt_train.txt.gz` confirms both paths are ignored by `.gitignore`.
+
+Documentation updates:
+
+1. Added this changelog entry.
+
+### 2026-03-03 (Tokenizer default checkpoint cadence tuning)
+
+Summary:
+
+1. Increased Stage 1 checkpoint batch interval default from 50 to 500 merged batches.
+2. Increased Stage 3 snapshot merge interval default from 200 to 2000 merges.
+3. Increased default periodic WAL fsync cadence from every 50 commits to every 250 commits.
+4. Kept time-based checkpoint trigger unchanged at every 300 seconds.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe.yaml`
+2. `scripts/tokenizer_bpe/config.py`
+3. `docs/TOKENIZER_BPE.md`
+4. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_config.py` passed (`10 passed`).
+
+Documentation updates:
+
+1. Updated tokenizer default config snippet in `docs/TOKENIZER_BPE.md`.
+
+### 2026-03-03 (Stage 3 resume/WAL integrity hardening)
+
+Summary:
+
+1. Added Stage 3 WAL metadata binding (`wal.meta.json`) so resume validates `config_hash` and `pattern_hash` before replay.
+2. Hardened WAL replay with contiguous merge-index checks and strict replay-effect validation (replayed merges must update at least one word type).
+3. Added fast-fail behavior when replaying WAL without compatible snapshot and without WAL metadata.
+4. Added config validation for `bpe.max_merges` to reject negative values.
+5. Added regression tests for WAL metadata mismatch/missing metadata/index gaps/no-effect replay and negative `max_merges`.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/stage3_train.py`
+2. `scripts/tokenizer_bpe/config.py`
+3. `tests/tokenizer_bpe/test_stage3_core.py`
+4. `tests/tokenizer_bpe/test_config.py`
+5. `docs/TOKENIZER_BPE.md`
+6. `docs/IMPLEMENTED_STEPS.md`
+7. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_stage3_core.py tests/tokenizer_bpe/test_config.py` passed (`21 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe tests/tokenizer_runtime/test_runtime.py` passed (`51 passed`).
+
+Documentation updates:
+
+1. Updated `docs/TOKENIZER_BPE.md` resume/WAL safety contract and config validation list.
+2. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 summary and resume contract with WAL metadata + replay checks.
+
+### 2026-03-03 (Stage 3 pair-index hygiene + vocab floor contract clarification)
+
+Summary:
+
+1. Fixed Stage 3 incremental pair-index maintenance so candidate word indices are appended only for locally new pairs in each updated word.
+2. Fixed stale candidate-list retention by removing `pair_to_words` entries when a pair's global count drops to non-positive.
+3. Added explicit config contract language for the low-`vocab_size` floor edge case where zero merges can occur and exported vocab can exceed requested size due to base bytes plus specials.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/stage3_train.py`
+2. `tests/tokenizer_bpe/test_stage3_core.py`
+3. `CONFIG.md`
+4. `docs/TOKENIZER_BPE.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_stage3_core.py tests/tokenizer_bpe/test_export.py tests/tokenizer_bpe/test_config.py` passed (`20 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe/test_stage3_recovery.py tests/tokenizer_bpe/test_train_tokenizer_resume.py` passed (`4 passed`).
+3. `python -m pytest -q tests/tokenizer_bpe` passed (`44 passed`).
+
+Documentation updates:
+
+1. Updated `CONFIG.md` with the explicit `bpe.vocab_size` floor edge-case contract.
+2. Updated `docs/TOKENIZER_BPE.md` Stage 3 behavior notes for append-light indexing and stale pair cleanup.
+3. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 implementation summary to include pair-index hygiene and floor-edge behavior.
+
 ### 2026-02-26 (Tokenizer BPE robustness/scaling feedback implementation)
 
 Summary:
