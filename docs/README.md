@@ -17,6 +17,8 @@ This directory holds implementation-level documentation for the repository.
   - Detailed implementation-level documentation for each completed scaffold step.
 - `docs/TOKENIZER_BPE.md`
   - Deep technical documentation for the local GPT-2 style byte-level BPE tokenizer trainer.
+- `docs/BPE_BUG_ERROR_ANALYSIS.md`
+  - Detailed analysis of identified Stage 03 BPE training bugs/errors and the documented `bpe.vocab_size` floor-edge-case contract exception.
 - `docs/data_collection_report.md`
   - Canonical tokenizer scaling report generated from Stage 03 run telemetry.
 - `docs/CHANGELOG.md`

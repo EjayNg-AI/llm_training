@@ -14,6 +14,62 @@ Format:
 
 ## Unreleased
 
+### 2026-03-03 (Add Stage 03 bug/error analysis document)
+
+Summary:
+
+1. Added a dedicated markdown analysis document describing Stage 03 BPE training bugs/errors in detail.
+2. Captured the `CONFIG.md` contract exception that intentionally ignores the trivial `bpe.vocab_size < 256 + len(special_tokens)` floor edge case.
+3. Kept the new analysis document focused on issue explanation only (no repair instructions).
+
+Impacted files/modules:
+
+1. `docs/BPE_BUG_ERROR_ANALYSIS.md`
+2. `docs/README.md`
+3. `docs/DIRECTORY_STRUCTURE.md`
+4. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Documentation-only change; no runtime validation executed.
+
+Documentation updates:
+
+1. Added `docs/BPE_BUG_ERROR_ANALYSIS.md`.
+2. Added the new document to `docs/README.md`.
+3. Updated tracked structure snapshot in `docs/DIRECTORY_STRUCTURE.md`.
+4. Added this changelog entry.
+
+### 2026-03-03 (Stage 03 telemetry and candidate-index maintenance bug fixes)
+
+Summary:
+
+1. Updated Stage 3 pair/heap late telemetry so `pair_count_len_late` and `heap_size_late` always reflect the actual final in-memory state, including early-stop runs that end before the first metrics window.
+2. Fixed Stage 3 incremental candidate-index maintenance to reduce stale growth by appending pair-to-word membership only for newly introduced local pairs and dropping candidate mappings when a pair count reaches zero.
+3. Added Stage 3 regression tests for early-stop late-metric correctness and duplicate candidate-index reporting prevention.
+4. Updated tokenizer config contract docs to explicitly call out the intentionally ignored `bpe.vocab_size < 256 + len(special_tokens)` floor edge case.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/stage3_train.py`
+2. `tests/tokenizer_bpe/test_stage3_core.py`
+3. `CONFIG.md`
+4. `docs/TOKENIZER_BPE.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_stage3_core.py` passed (`6 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe` passed (`44 passed`).
+
+Documentation updates:
+
+1. Updated tokenizer config contract edge-case note in `CONFIG.md`.
+2. Updated Stage 03 algorithm notes in `docs/TOKENIZER_BPE.md`.
+3. Updated Stage 03 implemented-step behavior notes in `docs/IMPLEMENTED_STEPS.md`.
+4. Added this changelog entry.
+
 ### 2026-03-01 (Add Stage 1 cap-eviction telemetry for max-unique enforcement)
 
 Summary:

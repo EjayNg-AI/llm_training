@@ -45,7 +45,7 @@ The tokenizer trainer uses:
 
 ## `bpe`
 
-1. `vocab_size`: target exported vocab size (bytes + merges + specials).
+1. `vocab_size`: target exported vocab size (bytes + merges + specials). Edge case: when `vocab_size < 256 + len(special_tokens.tokens)`, this is intentionally treated as a trivial floor condition (zero merges); the exported vocab still includes all 256 byte tokens plus configured specials, so the final size can exceed `vocab_size`.
 2. `min_merge_freq`: stop when best pair falls below threshold.
 3. `max_merges`: direct merge-count override (if null, derived from `vocab_size`).
 4. `max_word_types`: cap unique piece inventory after deterministic sorting.

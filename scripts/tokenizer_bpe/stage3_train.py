@@ -299,11 +299,13 @@ def train_bpe(
                     updated = pair_count.get(pair_id, 0) + delta
                     if updated <= 0:
                         pair_count.pop(pair_id, None)
+                        pair_to_words.pop(pair_id, None)
                     else:
                         pair_count[pair_id] = updated
                         heapq.heappush(heap, (-updated, pair_id))
 
-                for pair_id in new_pairs.keys():
+                # Only append memberships for pairs newly introduced in this word.
+                for pair_id in (new_pairs.keys() - old_pairs.keys()):
                     pair_to_words[pair_id].append(word_idx)
 
             pair_count.pop(merged_pair_id, None)
@@ -388,6 +390,8 @@ def train_bpe(
 
     logger.info("Stage 3 complete at merge index: %s", completed)
     stage3_elapsed = max(0.0, perf_counter() - stage3_started)
+    pair_count_len_late = len(pair_count)
+    heap_size_late = len(heap)
     checkpoint_meta = {
         "enabled": checkpointing_enabled,
         "resume_mode": resume_mode,

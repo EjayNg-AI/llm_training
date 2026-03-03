@@ -88,6 +88,7 @@ Top-level config sections:
 6. `checkpointing`
 
 Stage 03 exposes checkpointing settings for WAL/snapshot behavior and overhead measurement. `resume_mode` is currently accepted as config but still runs as fresh training.
+`bpe.vocab_size` is treated as a merge-target driver; if it is set below `256 + len(special_tokens.tokens)`, Stage 03 intentionally treats this as a zero-merge edge case and still exports at least byte-vocab + specials.
 
 ## Telemetry Contract
 
@@ -154,6 +155,8 @@ Determinism-critical contracts:
 3. Emits merge-latency window metrics and pair/candidate state pressure metrics.
 4. Optionally writes WAL and periodic snapshots.
 5. Captures checkpointing overhead (`snapshot_*` and WAL sync timing).
+6. Records `pair_count_len_late` / `heap_size_late` from final in-memory state, even when training exits before the first metrics window.
+7. Maintains pair-to-word candidate membership incrementally by appending only newly introduced pair memberships and dropping mappings when global pair count reaches zero.
 
 Stop conditions:
 

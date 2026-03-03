@@ -70,6 +70,8 @@ Current behavior:
    - Stage 1/2/3 scaling telemetry and memory stats
    - Stage 1 cap-engagement telemetry (`hit_max_unique_pieces`, `max_unique_pieces_cap_events`, pre-cap windowed unique counts, cap-eviction key/mass totals, evicted-mass ratio)
    - Stage 3 checkpoint instrumentation (WAL + snapshots + overhead timing)
+   - Stage 3 final-state telemetry for late pair/heap pressure fields even on early stop
+   - Stage 3 candidate-membership maintenance that avoids duplicate pair-to-word growth and drops zero-count pair mappings
 2. Writes Stage 03 run telemetry and structured run statistics:
    - `training_telemetry.json`
    - `run_statistics.json`

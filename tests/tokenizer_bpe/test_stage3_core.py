@@ -68,3 +68,70 @@ def test_train_bpe_respects_stop_after_merges(tmp_path, tokenizer_logger):
     assert "stage3_meta" in train_state
     assert train_state["stage3_meta"]["merges_done"] == 1
     assert train_state["stage3_meta"]["pair_count_len_initial"] >= 1
+
+
+def test_stage3_late_pair_count_metrics_reflect_final_state_after_early_stop(tmp_path, tokenizer_logger):
+    cfg = _minimal_cfg()
+    cfg["bpe"]["min_merge_freq"] = 15
+    cfg["run"] = {"stage3_metrics_every_merges": 1000}
+    cfg["checkpointing"] = {"enabled": False}
+
+    initial_state = {
+        "words": [[1, 2, 1, 2, 3]],
+        "freqs": [10],
+        "id_to_token_bytes": [bytes([i]) for i in range(256)],
+    }
+    train_state = train_bpe(
+        cfg=cfg,
+        run_dir=tmp_path / "run",
+        initial_state=initial_state,
+        logger=tokenizer_logger,
+        config_hash="cfg",
+        pattern_hash="pat",
+        stop_after_merges=None,
+    )
+
+    final_pair_count: dict[int, int] = {}
+    for symbols, freq in zip(train_state["words"], train_state["freqs"]):
+        local_pairs = count_adjacent_pairs(symbols)
+        for pair_id, occ in local_pairs.items():
+            final_pair_count[pair_id] = final_pair_count.get(pair_id, 0) + int(freq) * occ
+
+    assert train_state["last_merge"] == 1
+    assert train_state["stage3_meta"]["pair_count_len_late"] == len(final_pair_count)
+
+
+def test_stage3_candidate_windows_do_not_report_duplicate_word_indices(tmp_path, tokenizer_logger):
+    cfg = {
+        "bpe": {
+            "vocab_size": 280,
+            "max_merges": 8,
+            "min_merge_freq": 1,
+        },
+        "special_tokens": {"tokens": ["<|endoftext|>", "<|pad|>"]},
+        "run": {"stage3_metrics_every_merges": 1},
+        "checkpointing": {"enabled": False},
+    }
+    initial_state = {
+        "words": [
+            [6, 0, 4, 7, 6, 4, 7, 5],
+            [2, 4, 2],
+            [4, 2, 4, 1, 1, 5],
+            [1, 5, 6, 5, 3, 7],
+        ],
+        "freqs": [3, 1, 2, 2],
+        "id_to_token_bytes": [bytes([i]) for i in range(256)],
+    }
+    train_state = train_bpe(
+        cfg=cfg,
+        run_dir=tmp_path / "run",
+        initial_state=initial_state,
+        logger=tokenizer_logger,
+        config_hash="cfg",
+        pattern_hash="pat",
+        stop_after_merges=None,
+    )
+
+    assert train_state["stage3_meta"]["progress_samples"]
+    for sample in train_state["stage3_meta"]["progress_samples"]:
+        assert sample["candidates_pre_dedup_median_window"] == sample["candidates_post_dedup_median_window"]
