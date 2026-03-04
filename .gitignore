@@ -121,6 +121,14 @@ models/
 # Keep local raw training corpora out of version control
 data/raw/*.txt
 data/raw/*.gz
+**/*train*.txt
+**/*train*.gz
+**/*valid*.txt
+**/*valid*.gz
+**/owt_train*.txt
+**/owt_train*.gz
+**/owt_valid*.txt
+**/owt_valid*.gz
 
 # Editor / OS files
 .vscode/

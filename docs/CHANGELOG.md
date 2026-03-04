@@ -14,6 +14,27 @@ Format:
 
 ## Unreleased
 
+### 2026-03-04 (Ignore training/validation corpus text and gzip variants)
+
+Summary:
+
+1. Expanded `.gitignore` to ignore training/validation `.txt` and `.gz` corpus files across the repository.
+2. Added explicit `owt_train*` and `owt_valid*` ignore patterns for both `.txt` and `.gz` variants.
+
+Impacted files/modules:
+
+1. `.gitignore`
+2. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `git check-ignore -v data/raw/owt_train_shard_00.txt data/raw/owt_valid.txt.gz artifacts/tokenizer/train_chunk.txt artifacts/tokenizer/valid_chunk.gz` confirms matching ignore rules.
+2. `git check-ignore -v sample.txt sample.gz` returns no matches.
+
+Documentation updates:
+
+1. Added this changelog entry.
+
 ### 2026-03-04 (Scope `.txt`/`.gz` ignores to training data only)
 
 Summary:
