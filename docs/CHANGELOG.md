@@ -14,6 +14,31 @@ Format:
 
 ## Unreleased
 
+### 2026-03-03 (OWT tokenizer training run configuration)
+
+Summary:
+
+1. Added a dedicated tokenizer config for training directly on `data/raw/owt_train.txt`.
+2. Documented the manual train/resume commands for this large-corpus run in `README.md`.
+3. Confirmed `owt_train.txt` is already in the canonical raw data location (`data/raw/owt_train.txt`), so no additional path change was required.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_owt_train.yaml`
+2. `README.md`
+3. `docs/DIRECTORY_STRUCTURE.md`
+4. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -c "import sys; sys.path.insert(0, 'scripts'); from tokenizer_bpe.config import load_config; cfg = load_config('configs/tokenizer_bpe_owt_train.yaml'); print(cfg['data']['input_paths'][0]); print(cfg['run']['output_dir'])"` passed (`data/raw/owt_train.txt`, `artifacts/tokenizer/runs_owt_train`).
+
+Documentation updates:
+
+1. Added this changelog entry.
+2. Updated `README.md` with the OWT tokenizer run commands.
+3. Updated `docs/DIRECTORY_STRUCTURE.md` with the new tracked config file.
+
 ### 2026-03-03 (Ignore local OWT raw training files)
 
 Summary:

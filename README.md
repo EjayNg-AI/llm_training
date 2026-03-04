@@ -97,7 +97,21 @@ python scripts/08_eval.py --config configs/eval.yaml
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
 ```
 
-### 6) Run tests
+### 6) Train tokenizer on `owt_train.txt` (optional large run)
+
+Place the corpus at `data/raw/owt_train.txt` and use the dedicated run config:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --run-id owt_bpe_50k_<date_tag>
+```
+
+Resume that exact run:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --resume --run-id owt_bpe_50k_<date_tag>
+```
+
+### 7) Run tests
 
 Run all tests:
 
@@ -117,7 +131,7 @@ Run fast tokenizer unit tests only (skip integration-marked tokenizer tests):
 python -m pytest -q tests/tokenizer_bpe -m "not integration"
 ```
 
-### 7) Remove `Zone.Identifier` files (optional)
+### 8) Remove `Zone.Identifier` files (optional)
 
 ```bash
 python scripts/cleanup_zone_identifier.py --dry-run

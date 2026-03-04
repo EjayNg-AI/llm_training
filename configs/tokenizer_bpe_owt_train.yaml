@@ -1,0 +1,6 @@
+run:
+  output_dir: "artifacts/tokenizer/runs_owt_train"
+
+data:
+  input_paths:
+    - "data/raw/owt_train.txt"
