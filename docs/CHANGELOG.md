@@ -14,6 +14,27 @@ Format:
 
 ## Unreleased
 
+### 2026-03-04 (Scope `.txt`/`.gz` ignores to training data only)
+
+Summary:
+
+1. Removed global `.txt` and `.gz` ignore patterns.
+2. Added scoped ignore patterns for raw training data files only (`data/raw/*.txt`, `data/raw/*.gz`).
+
+Impacted files/modules:
+
+1. `.gitignore`
+2. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `git check-ignore -v data/raw/example.txt data/raw/example.gz` confirms raw training data `.txt`/`.gz` files are ignored.
+2. `git check-ignore -v sample.txt sample.gz` returns no matches, confirming non-training `.txt`/`.gz` files are not globally ignored.
+
+Documentation updates:
+
+1. Added this changelog entry.
+
 ### 2026-03-03 (OWT tokenizer training run configuration)
 
 Summary:

@@ -119,8 +119,8 @@ models/
 !artifacts/eval/.gitkeep
 
 # Keep local raw training corpora out of version control
-data/raw/owt_train.txt
-data/raw/owt_train.txt.gz
+data/raw/*.txt
+data/raw/*.gz
 
 # Editor / OS files
 .vscode/
