@@ -1,6 +1,6 @@
 # Repository directory structure
 
-Generated from `git ls-files` on 2026-03-03.
+Generated from `git ls-files` on 2026-03-06.
 
 This is the canonical tracked structure of the repository as documented in `AGENTS.md`.
 

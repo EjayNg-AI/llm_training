@@ -14,6 +14,29 @@ Format:
 
 ## Unreleased
 
+### 2026-03-06 (Remove local OWT/TinyStories text and gzip training data files)
+
+Summary:
+
+1. Removed repository-local OWT/OpenWebText and TinyStories training data files in `.txt`/`.gz` format.
+2. Deleted the tracked sample file `openwebtext_sample_3k_4k_tokens.txt`.
+3. Deleted the local untracked file `owt_valid.txt`.
+
+Impacted files/modules:
+
+1. `openwebtext_sample_3k_4k_tokens.txt` (deleted)
+2. `docs/CHANGELOG.md`
+3. `docs/DIRECTORY_STRUCTURE.md`
+
+Validation status:
+
+1. `find . -type f \( -iname "*owt*.txt" -o -iname "*owt*.gz" -o -iname "*openwebtext*.txt" -o -iname "*openwebtext*.gz" -o -iname "*tinystories*.txt" -o -iname "*tinystories*.gz" \)` returns no files.
+
+Documentation updates:
+
+1. Added this changelog entry.
+2. Refreshed `docs/DIRECTORY_STRUCTURE.md` snapshot date.
+
 ### 2026-03-04 (Ignore training/validation corpus text and gzip variants)
 
 Summary:
