@@ -68,6 +68,7 @@ Current behavior:
    - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`), append-light pair index maintenance, heap pressure controls, and WAL + snapshot recovery
    - Stage 3 resume hardening with `wal.meta.json` hash binding and stricter WAL replay checks (contiguous merge indices + merge-effect validation)
    - Stage 3 PoC durability defaults (periodic fsync with paranoid per-commit option)
+   - direct CLI overrides for `max_unique_pieces` and `max_word_types`, folded into the effective config hash
    - deterministic merge/export behavior
    - low-`vocab_size` floor contract: merge count can be zero while export still includes base 256 bytes plus configured specials
 2. Publishes tokenizer artifacts by artifact ID under `artifacts/tokenizer/exports/<tokenizer_id>/`.
@@ -87,6 +88,7 @@ Resume contract:
 1. `--resume --run-id <run_id>` reuses existing run directory.
 2. Resume validates WAL hash binding (`wal.meta.json`) against current `config_hash`/`pattern_hash`.
 3. WAL replay enforces contiguous merge indices and non-noop replay merges.
+4. Default policy keeps `max_bytes`, `max_lines`, and `max_merges` unlimited unless set, while `max_unique_pieces` and `max_word_types` default to `2500000`.
 
 ## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
 

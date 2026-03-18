@@ -166,6 +166,8 @@ Key CLI options:
 1. `--run-id` pins a run directory under `run.output_dir`.
 2. `--stop-after-merges` is a debug/recovery test knob.
 3. `--artifact-id` controls the published artifact ID under `artifacts/tokenizer/exports/`.
+4. `--max-unique-pieces` overrides `data.max_unique_pieces` for a single run.
+5. `--max-word-types` overrides `bpe.max_word_types` for a single run.
 
 Run directory structure:
 
@@ -247,7 +249,7 @@ data:
   num_workers: 4
   batch_lines: 2000
   min_piece_freq: 2
-  max_unique_pieces: 2000000
+  max_unique_pieces: 2500000
 
 pretokenizer:
   pattern: "gpt2_fast"
@@ -258,7 +260,7 @@ bpe:
   vocab_size: 50000
   min_merge_freq: 2
   max_merges: null
-  max_word_types: 1500000
+  max_word_types: 2500000
   max_piece_bytes: 200
   tie_break: "lexicographic"
 
@@ -277,6 +279,12 @@ checkpointing:
   stage1_snapshot_every_batches: 500
 ```
 
+Default policy:
+
+1. `data.max_bytes` and `data.max_lines` are unlimited by default (`null`).
+2. `bpe.max_merges` is unlimited as an explicit cap by default (`null`), so target merges are derived from `vocab_size`.
+3. `data.max_unique_pieces` and `bpe.max_word_types` default to `2500000`.
+
 Validation rules currently enforced:
 
 1. `data.input_format` in `{text, jsonl}`.
@@ -285,8 +293,12 @@ Validation rules currently enforced:
 4. `special_tokens.placement` in `{start, end}`.
 5. `bpe.tie_break` must be `lexicographic`.
 6. `data.num_workers >= 1`, `data.batch_lines >= 1`, `bpe.vocab_size >= 256`.
-7. `bpe.max_merges >= 0` when provided.
-8. `checkpointing.wal_fsync_every_commits >= 0`.
+7. `data.max_bytes >= 0` when provided.
+8. `data.max_lines >= 0` when provided.
+9. `data.max_unique_pieces > 0` when provided.
+10. `bpe.max_merges >= 0` when provided.
+11. `bpe.max_word_types > 0`.
+12. `checkpointing.wal_fsync_every_commits >= 0`.
 
 Determinism hashes:
 
@@ -299,7 +311,7 @@ Determinism hashes:
 
 `config_hash` canonicalization contract (normative):
 
-1. Start from the merged config (defaults deep-merged with user config).
+1. Start from the merged effective config (defaults deep-merged with user config, then CLI overrides when used).
 2. Do not include runtime-added `meta` keys in the hashed payload.
 3. Serialize with `json.dumps(cfg, sort_keys=True, separators=(",", ":"), ensure_ascii=False)`.
 4. Encode JSON as UTF-8 and hash with SHA-256.

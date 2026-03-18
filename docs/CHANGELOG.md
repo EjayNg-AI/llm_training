@@ -14,6 +14,40 @@ Format:
 
 ## Unreleased
 
+### 2026-03-18 (Tokenizer cap override surface and default policy update)
+
+Summary:
+
+1. Raised tokenizer default inventory caps so `max_unique_pieces` and `max_word_types` both default to `2500000`.
+2. Kept `max_bytes`, `max_lines`, and `max_merges` unlimited by default (`null` / `None`) and documented that policy explicitly.
+3. Added canonical Stage 03 CLI overrides for `--max-unique-pieces` and `--max-word-types`.
+4. Bound CLI overrides into effective config validation and `config_hash` generation.
+5. Added regression tests for defaults, override precedence, hashing, and new validation bounds.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/config.py`
+2. `scripts/03_train_tokenizer.py`
+3. `configs/tokenizer_bpe.yaml`
+4. `tests/tokenizer_bpe/test_config.py`
+5. `README.md`
+6. `CONFIG.md`
+7. `docs/TOKENIZER_BPE.md`
+8. `docs/IMPLEMENTED_STEPS.md`
+9. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_config.py` passed (`18 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe` passed (`57 passed`).
+
+Documentation updates:
+
+1. Updated `README.md` with the canonical CLI override example and tokenizer default-policy summary.
+2. Updated `CONFIG.md` to describe unlimited defaults for `max_bytes`/`max_lines`/`max_merges` and `2500000` defaults for `max_unique_pieces`/`max_word_types`.
+3. Updated `docs/TOKENIZER_BPE.md` with the new defaults, validation rules, and CLI override contract.
+4. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 summary with the effective-config hash behavior and default policy.
+
 ### 2026-03-06 (Remove local OWT/TinyStories text and gzip training data files)
 
 Summary:

@@ -29,7 +29,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "num_workers": 4,
         "batch_lines": 2000,
         "min_piece_freq": 2,
-        "max_unique_pieces": 2000000,
+        "max_unique_pieces": 2500000,
     },
     "pretokenizer": {
         "pattern": "gpt2_fast",
@@ -40,7 +40,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "vocab_size": 50000,
         "min_merge_freq": 2,
         "max_merges": None,
-        "max_word_types": 1500000,
+        "max_word_types": 2500000,
         "max_piece_bytes": 200,
         "tie_break": "lexicographic",
     },
@@ -86,11 +86,22 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError("data.num_workers must be >= 1")
     if int(cfg["data"]["batch_lines"]) < 1:
         raise ValueError("data.batch_lines must be >= 1")
+    max_bytes = cfg["data"].get("max_bytes")
+    if max_bytes is not None and int(max_bytes) < 0:
+        raise ValueError("data.max_bytes must be >= 0 when provided")
+    max_lines = cfg["data"].get("max_lines")
+    if max_lines is not None and int(max_lines) < 0:
+        raise ValueError("data.max_lines must be >= 0 when provided")
+    max_unique_pieces = cfg["data"].get("max_unique_pieces")
+    if max_unique_pieces is not None and int(max_unique_pieces) <= 0:
+        raise ValueError("data.max_unique_pieces must be > 0 when provided")
     if int(cfg["bpe"]["vocab_size"]) < 256:
         raise ValueError("bpe.vocab_size must be >= 256")
     max_merges = cfg["bpe"].get("max_merges")
     if max_merges is not None and int(max_merges) < 0:
         raise ValueError("bpe.max_merges must be >= 0 when provided")
+    if int(cfg["bpe"]["max_word_types"]) <= 0:
+        raise ValueError("bpe.max_word_types must be > 0")
     if int(cfg["checkpointing"].get("wal_fsync_every_commits", 0)) < 0:
         raise ValueError("checkpointing.wal_fsync_every_commits must be >= 0")
 
@@ -118,7 +129,7 @@ def build_pattern_hash(
     return sha256_hex(canonical_config_json(payload))
 
 
-def load_config(path: str | Path) -> dict[str, Any]:
+def load_config(path: str | Path, overrides: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg_path = Path(path)
     if not cfg_path.exists():
         raise FileNotFoundError(f"Tokenizer config not found: {cfg_path}")
@@ -126,6 +137,10 @@ def load_config(path: str | Path) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise ValueError("Top-level config must be a mapping.")
     cfg = _deep_merge(DEFAULT_CONFIG, raw)
+    if overrides is not None:
+        if not isinstance(overrides, dict):
+            raise ValueError("Config overrides must be a mapping.")
+        cfg = _deep_merge(cfg, overrides)
     _validate(cfg)
 
     cfg_no_meta = copy.deepcopy(cfg)

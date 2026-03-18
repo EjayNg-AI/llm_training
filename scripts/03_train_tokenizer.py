@@ -64,7 +64,7 @@ def _setup_logging(run_dir: Path, cfg: dict[str, Any]) -> logging.Logger:
     return logger
 
 
-def parse_args() -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--config",
@@ -97,12 +97,37 @@ def parse_args() -> argparse.Namespace:
         default="artifacts",
         help="Root artifact directory containing registry.jsonl and stage outputs.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--max-unique-pieces",
+        type=int,
+        default=None,
+        help="Override data.max_unique_pieces for this run.",
+    )
+    parser.add_argument(
+        "--max-word-types",
+        type=int,
+        default=None,
+        help="Override bpe.max_word_types for this run.",
+    )
+    return parser
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    return build_parser().parse_args(argv)
+
+
+def _config_overrides_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    overrides: dict[str, Any] = {}
+    if args.max_unique_pieces is not None:
+        overrides.setdefault("data", {})["max_unique_pieces"] = args.max_unique_pieces
+    if args.max_word_types is not None:
+        overrides.setdefault("bpe", {})["max_word_types"] = args.max_word_types
+    return overrides
 
 
 def main() -> None:
     args = parse_args()
-    cfg = load_config(args.config)
+    cfg = load_config(args.config, overrides=_config_overrides_from_args(args))
 
     run_ctx = make_run_context(
         stage_name="03_train_tokenizer",
@@ -131,6 +156,14 @@ def main() -> None:
     logger = _setup_logging(run_dir, cfg)
     logger.info("Run directory: %s", run_dir)
     logger.info("Config hash: %s", cfg["meta"]["config_hash"])
+    logger.info(
+        "Effective caps: max_bytes=%s max_lines=%s max_unique_pieces=%s max_word_types=%s max_merges=%s",
+        cfg["data"]["max_bytes"],
+        cfg["data"]["max_lines"],
+        cfg["data"]["max_unique_pieces"],
+        cfg["bpe"]["max_word_types"],
+        cfg["bpe"]["max_merges"],
+    )
 
     pattern_alias, pattern_str, pattern_flags, regex_version = resolve_pattern(cfg["pretokenizer"])
     pattern_hash = build_pattern_hash(

@@ -91,6 +91,18 @@ python scripts/07_sft_lora.py --config configs/sft.yaml
 python scripts/08_eval.py --config configs/eval.yaml
 ```
 
+Tokenizer cap overrides can be set directly on the canonical stage entrypoint:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --max-unique-pieces 2500000 --max-word-types 2500000
+```
+
+Tokenizer default policy:
+
+- `max_bytes` and `max_lines` are unlimited unless explicitly set.
+- `max_merges` is unlimited as an explicit cap; when unset, target merges are derived from `vocab_size`.
+- `max_unique_pieces` and `max_word_types` default to `2500000`.
+
 ### 5) Resume tokenizer training after interruption (optional)
 
 ```bash

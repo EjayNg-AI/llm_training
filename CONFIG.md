@@ -27,12 +27,12 @@ The tokenizer trainer uses one source-of-truth config file:
 - `jsonl_text_field`: source field when `input_format=jsonl`
 - `decode_errors`: UTF-8 decode policy (`strict`, `replace`, `ignore`)
 - `normalize`: `none`, `NFC`, or `NFKC`
-- `max_bytes`: optional global cap on raw bytes read
-- `max_lines`: optional global cap on lines read
+- `max_bytes`: optional global cap on raw bytes read; default `null` means unlimited
+- `max_lines`: optional global cap on lines read; default `null` means unlimited
 - `num_workers`: Stage 1 worker process count
 - `batch_lines`: line batch size per worker task
 - `min_piece_freq`: low-frequency filtering threshold applied during Stage 2 inventory initialization
-- `max_unique_pieces`: optional deterministic top-K cap used as Stage 1 memory approximation control
+- `max_unique_pieces`: deterministic top-K cap used as Stage 1 memory approximation control; default `2500000`
 
 ## `pretokenizer`
 
@@ -70,8 +70,8 @@ Notes:
   - Floor edge case: when `vocab_size < 256 + len(special_tokens.tokens)`, Stage 3 can perform zero merges.
   - In that edge case, export still includes all 256 byte tokens plus all configured special tokens, so final exported vocab can exceed requested `vocab_size`.
 - `min_merge_freq`: stop training if best pair count drops below this threshold
-- `max_merges`: override merge count directly (if null, derived from `vocab_size`)
-- `max_word_types`: cap unique piece inventory after deterministic sorting
+- `max_merges`: override merge count directly; default `null` means no explicit cap and derived target merges from `vocab_size`
+- `max_word_types`: cap unique piece inventory after deterministic sorting; default `2500000`
 - `max_piece_bytes`: drop unusually long pieces in Stage 1 worker path
 - `tie_break`: currently `lexicographic` only
 
