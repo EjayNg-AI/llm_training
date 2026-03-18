@@ -5,7 +5,7 @@ import json
 import pytest
 
 from tokenizer_bpe.byte_unicode import bytes_to_unicode, token_bytes_to_string
-from tokenizer_bpe.export import export_tokenizer
+from tokenizer_bpe.export import _build_special_tokens_map, export_tokenizer
 
 
 def _train_state() -> dict:
@@ -86,6 +86,33 @@ def test_export_rejects_special_token_collision_with_base_vocab(tmp_path, tokeni
             corpus_hash="corp",
             logger=tokenizer_logger,
         )
+
+
+def test_build_special_tokens_map_prefers_explicit_standard_tokens():
+    tokens = [
+        "<|endoftext|>",
+        "</s>",
+        "<eos>",
+        "<s>",
+        "<bos>",
+        "<pad>",
+        "<unk>",
+    ]
+    assert _build_special_tokens_map(tokens) == {
+        "bos_token": "<bos>",
+        "eos_token": "<eos>",
+        "unk_token": "<unk>",
+        "pad_token": "<pad>",
+    }
+
+
+def test_build_special_tokens_map_keeps_legacy_fallbacks():
+    assert _build_special_tokens_map(["<|endoftext|>", "<|pad|>"]) == {
+        "bos_token": "<|endoftext|>",
+        "eos_token": "<|endoftext|>",
+        "unk_token": "<|endoftext|>",
+        "pad_token": "<|pad|>",
+    }
 
 
 def test_export_writes_merges_header_and_stats(tmp_path, tokenizer_logger):

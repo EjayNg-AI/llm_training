@@ -102,6 +102,8 @@ Tokenizer default policy:
 - `max_bytes` and `max_lines` are unlimited unless explicitly set.
 - `max_merges` is unlimited as an explicit cap; when unset, target merges are derived from `vocab_size`.
 - `max_unique_pieces` and `max_word_types` default to `2500000`.
+- the default `special_tokens.tokens` inventory includes end-of-text, BOS/EOS/PAD/UNK, chat-role, message-boundary, FIM, and metadata/control markers as listed in `configs/tokenizer_bpe.yaml`
+- configured `special_tokens.tokens` are stripped from Stage 1 training text before regex pretokenization, so literal special-token text does not affect learned merges
 
 ### 5) Resume tokenizer training after interruption (optional)
 

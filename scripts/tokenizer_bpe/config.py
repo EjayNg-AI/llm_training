@@ -11,6 +11,36 @@ from typing import Any
 import yaml
 
 
+DEFAULT_SPECIAL_TOKENS = [
+    "<|endoftext|>",
+    "</s>",
+    "<eos>",
+    "<s>",
+    "<bos>",
+    "<pad>",
+    "<unk>",
+    "<|system|>",
+    "<|user|>",
+    "<|assistant|>",
+    "<|im_start|>",
+    "<|im_end|>",
+    "<|endofmessage|>",
+    "<|sep|>",
+    "<|summarize|>",
+    "<|translate|>",
+    "<|code|>",
+    "<mask>",
+    "<fim_prefix>",
+    "<fim_middle>",
+    "<fim_suffix>",
+    "<|title|>",
+    "<|url|>",
+    "<|date|>",
+    "<|tool|>",
+    "<|function_call|>",
+]
+
+
 DEFAULT_CONFIG: dict[str, Any] = {
     "run": {
         "output_dir": "artifacts/tokenizer/runs",
@@ -45,7 +75,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "tie_break": "lexicographic",
     },
     "special_tokens": {
-        "tokens": ["<|endoftext|>", "<|pad|>"],
+        "tokens": DEFAULT_SPECIAL_TOKENS,
         "placement": "end",
     },
     "checkpointing": {

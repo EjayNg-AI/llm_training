@@ -64,6 +64,8 @@ Current behavior:
 1. Reuses existing tokenizer implementation modules under `scripts/tokenizer_bpe/`:
    - regex pretokenization
    - Stage 1 multiprocessing piece counting with out-of-order worker completion and deterministic in-order merge application
+   - Stage 1 special-token stripping after optional normalization and before regex pretokenization, so configured special-token literals never affect learned counts or merges
+   - expanded default special-token inventory covering BOS/EOS/PAD/UNK plus chat, FIM, and metadata/control markers
    - Stage 2/3 compact integer-array state (`array('H'/'I')` words + array-backed freqs)
    - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`), append-light pair index maintenance, heap pressure controls, and WAL + snapshot recovery
    - Stage 3 resume hardening with `wal.meta.json` hash binding and stricter WAL replay checks (contiguous merge indices + merge-effect validation)

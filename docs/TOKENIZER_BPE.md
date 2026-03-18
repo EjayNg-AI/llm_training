@@ -27,7 +27,7 @@ This section is the shortest path to understanding what must be implemented to r
 
 At a high level, training is:
 
-1. Split text into regex pieces and count piece byte strings.
+1. Normalize each line if configured, strip configured special-token literals, then split remaining text into regex pieces and count piece byte strings.
 2. Initialize BPE state from those counts using byte IDs (`0..255`) as the base symbols.
 3. Repeatedly merge the highest-frequency adjacent symbol pair.
 4. Export vocab/merge artifacts and append special tokens at export time.
@@ -40,21 +40,23 @@ Training is byte-level. The base vocabulary is always the 256 single-byte tokens
 id_to_token_bytes = [bytes([b]) for b in range(256)]
 ```
 
-Stage 1 reads corpus lines, optionally normalizes per line, applies GPT-2 style regex pretokenization, and counts UTF-8 piece bytes:
+Stage 1 reads corpus lines, optionally normalizes per line, removes configured special-token literals, applies GPT-2 style regex pretokenization to the remaining text, and counts UTF-8 piece bytes:
 
 ```python
 if normalize_mode != "none":
     line = unicodedata.normalize(normalize_mode, line)
-for match in compiled_pattern.finditer(line):
-    piece = match.group(0)
-    piece_counts[piece.encode("utf-8")] += 1
+for segment in split_around_special_tokens(line):
+    for match in compiled_pattern.finditer(segment):
+        piece = match.group(0)
+        piece_counts[piece.encode("utf-8")] += 1
 ```
 
 For independent implementations, this is a key contract:
 
 1. Counted unit is piece UTF-8 bytes (not Unicode codepoints).
 2. Regex matching and normalization order must match training exactly.
-3. Deterministic Stage 1 progress/resume behavior depends on applying completed worker results in contiguous `batch_id` order.
+3. Configured special-token strings must be matched literally with escaping and ordered longest-first before splitting, so overlapping tokens do not partially consume each other.
+4. Deterministic Stage 1 progress/resume behavior depends on applying completed worker results in contiguous `batch_id` order.
 
 ### 2) Build initial BPE training state
 
@@ -110,10 +112,11 @@ Implementation notes for SWE teams:
 
 ### 4) Special tokens
 
-Special tokens are intentionally excluded from merge learning state. They are added only during export:
+Special tokens are intentionally excluded from merge learning state. They are added only during export, and literal occurrences in training text are stripped in Stage 1 before regex pretokenization:
 
 1. `placement = "start"`: specials get lowest IDs, learned tokens are shifted.
 2. `placement = "end"`: learned tokens keep IDs, specials are appended.
+3. Export prefers explicit `<bos>`, `<eos>`, `<unk>`, and `<pad>` entries for `special_tokens_map.json` when they are present; otherwise it falls back to legacy `<|endoftext|>` / `<|pad|>` or positional defaults.
 
 Any collision between special-token strings and learned token strings is a hard error.
 
@@ -267,7 +270,31 @@ bpe:
 special_tokens:
   tokens:
     - "<|endoftext|>"
-    - "<|pad|>"
+    - "</s>"
+    - "<eos>"
+    - "<s>"
+    - "<bos>"
+    - "<pad>"
+    - "<unk>"
+    - "<|system|>"
+    - "<|user|>"
+    - "<|assistant|>"
+    - "<|im_start|>"
+    - "<|im_end|>"
+    - "<|endofmessage|>"
+    - "<|sep|>"
+    - "<|summarize|>"
+    - "<|translate|>"
+    - "<|code|>"
+    - "<mask>"
+    - "<fim_prefix>"
+    - "<fim_middle>"
+    - "<fim_suffix>"
+    - "<|title|>"
+    - "<|url|>"
+    - "<|date|>"
+    - "<|tool|>"
+    - "<|function_call|>"
   placement: "end"
 
 checkpointing:
@@ -394,7 +421,8 @@ Normative order for each training input line:
 2. For `jsonl`, main process parses JSON and extracts `jsonl_text_field` if it is a string.
 3. Worker receives decoded/extracted text.
 4. Worker applies `unicodedata.normalize(normalize_mode, line)` if mode is not `none`.
-5. Worker runs regex pretokenization and counts piece UTF-8 bytes.
+5. Worker splits the normalized line around configured special-token literals and discards the matched substrings.
+6. Worker runs regex pretokenization over the remaining segments and counts piece UTF-8 bytes.
 
 Runtime contract:
 
@@ -421,7 +449,7 @@ Discovery is deterministic:
 
 ### 7.2 Counting unit
 
-The counted object is the pretokenized piece encoded as bytes:
+The counted object is the pretokenized piece encoded as bytes after configured special-token substrings have been removed from the normalized line:
 
 ```python
 piece_bytes = piece.encode("utf-8")
@@ -441,16 +469,17 @@ Architecture:
 3. For JSONL, each line is parsed and `jsonl_text_field` is extracted if it is a string.
 4. Main process submits decoded line batches to `ProcessPoolExecutor`.
 5. Worker processes run `_worker_init` once to compile regex and load normalization config.
-6. Workers normalize each received line (if configured), pretokenize, and return `Counter[bytes]` + local piece count.
+6. Workers normalize each received line (if configured), split around configured special-token literals, pretokenize only non-special segments, and return `Counter[bytes]` + local piece count.
 7. Main process merges worker counters.
 
 Worker init:
 
 ```python
-def _worker_init(pattern_str, pattern_flags, normalize, max_piece_bytes):
+def _worker_init(pattern_str, pattern_flags, normalize, max_piece_bytes, special_tokens):
     _WORKER_PATTERN = compile_pattern(pattern_str, pattern_flags)
     _WORKER_NORMALIZE = normalize
     _WORKER_MAX_PIECE_BYTES = max_piece_bytes
+    _WORKER_SPECIAL_SPLIT_RE = _compile_special_token_splitter(special_tokens, normalize)
 ```
 
 Main loop details:

@@ -14,6 +14,66 @@ Format:
 
 ## Unreleased
 
+### 2026-03-18 (Expand default tokenizer special-token inventory)
+
+Summary:
+
+1. Expanded the default tokenizer special-token list to include the requested chat-role, message-boundary, BOS/EOS/PAD/UNK, FIM, and metadata/control markers.
+2. Deduplicated repeated entries from the requested list in first-seen order before encoding them into repository defaults.
+3. Updated export special-token mapping so `special_tokens_map.json` prefers explicit `<bos>`, `<eos>`, `<unk>`, and `<pad>` when those tokens exist, while preserving legacy fallback behavior for `<|endoftext|>` and `<|pad|>`.
+4. Added regression coverage for the expanded default config and the updated export mapping rules.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/config.py`
+2. `scripts/tokenizer_bpe/export.py`
+3. `configs/tokenizer_bpe.yaml`
+4. `tests/tokenizer_bpe/test_config.py`
+5. `tests/tokenizer_bpe/test_export.py`
+6. `README.md`
+7. `docs/IMPLEMENTED_STEPS.md`
+8. `docs/TOKENIZER_BPE.md`
+9. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_config.py tests/tokenizer_bpe/test_export.py` passed (`24 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe` passed (`62 passed`).
+
+Documentation updates:
+
+1. Updated `README.md` tokenizer default-policy notes.
+2. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 summary for the expanded default inventory.
+3. Updated `docs/TOKENIZER_BPE.md` default config and special-token export contract.
+
+### 2026-03-18 (Fix Stage 1 special-token contamination in tokenizer BPE training)
+
+Summary:
+
+1. Fixed `scripts/tokenizer_bpe/stage1_count.py` so Stage 1 removes configured special-token literals after optional normalization and before regex pretokenization.
+2. Added regression tests covering exact-line and inline special-token occurrences, plus longest-first literal matching for overlapping special tokens.
+3. Updated tokenizer documentation to make the Stage 1 special-token exclusion contract explicit.
+4. Tokenizers previously trained on corpora containing literal configured special-token text should be retrained, because the old Stage 1 counts could change merge ordering and final vocabulary.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/stage1_count.py`
+2. `tests/tokenizer_bpe/test_stage1_count_unit.py`
+3. `README.md`
+4. `docs/TOKENIZER_BPE.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe` passed (`60 passed`).
+
+Documentation updates:
+
+1. Updated `README.md` tokenizer training notes with the corrected special-token Stage 1 behavior.
+2. Updated `docs/TOKENIZER_BPE.md` Stage 1 and special-token sections with the new exclusion order.
+3. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 behavior summary.
+
 ### 2026-03-18 (Tokenizer cap override surface and default policy update)
 
 Summary:

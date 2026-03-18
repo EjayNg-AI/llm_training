@@ -12,19 +12,26 @@ from .io_atomic import atomic_dump_json, atomic_dump_text
 
 
 def _build_special_tokens_map(tokens: list[str]) -> dict[str, str]:
+    def first_present(candidates: list[str], fallback: str | None = None) -> str | None:
+        for candidate in candidates:
+            if candidate in tokens:
+                return candidate
+        return fallback
+
     mapping: dict[str, str] = {}
-    if "<|endoftext|>" in tokens:
-        mapping["bos_token"] = "<|endoftext|>"
-        mapping["eos_token"] = "<|endoftext|>"
-        mapping["unk_token"] = "<|endoftext|>"
-    elif tokens:
-        mapping["bos_token"] = tokens[0]
-        mapping["eos_token"] = tokens[0]
-        mapping["unk_token"] = tokens[0]
-    if "<|pad|>" in tokens:
-        mapping["pad_token"] = "<|pad|>"
-    elif tokens:
-        mapping["pad_token"] = tokens[-1]
+    bos_token = first_present(["<bos>", "<s>", "<|endoftext|>"], tokens[0] if tokens else None)
+    eos_token = first_present(["<eos>", "</s>", "<|endoftext|>"], tokens[0] if tokens else None)
+    unk_token = first_present(["<unk>", "<|endoftext|>"], tokens[0] if tokens else None)
+    pad_token = first_present(["<pad>", "<|pad|>"], tokens[-1] if tokens else None)
+
+    if bos_token is not None:
+        mapping["bos_token"] = bos_token
+    if eos_token is not None:
+        mapping["eos_token"] = eos_token
+    if unk_token is not None:
+        mapping["unk_token"] = unk_token
+    if pad_token is not None:
+        mapping["pad_token"] = pad_token
     return mapping
 
 
@@ -117,4 +124,3 @@ def export_tokenizer(
     atomic_dump_json(run_dir / "export_manifest.json", {"export_dir": str(export_dir), **training_stats})
 
     logger.info("Exported vocab size=%s merges=%s", len(vocab), len(merge_pairs))
-

@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
+import re
 import time
 from typing import Any
 import unicodedata
@@ -24,13 +25,44 @@ PROGRESS_NAME = "word_counts.progress.json"
 _WORKER_PATTERN = None
 _WORKER_NORMALIZE = "none"
 _WORKER_MAX_PIECE_BYTES = 200
+_WORKER_SPECIAL_SPLIT_RE: re.Pattern[str] | None = None
 
 
-def _worker_init(pattern_str: str, pattern_flags: int, normalize: str, max_piece_bytes: int) -> None:
-    global _WORKER_PATTERN, _WORKER_NORMALIZE, _WORKER_MAX_PIECE_BYTES
+def _compile_special_token_splitter(
+    special_tokens: list[str] | tuple[str, ...],
+    normalize: str,
+) -> re.Pattern[str] | None:
+    prepared_tokens = [
+        unicodedata.normalize(normalize, token) if normalize != "none" else token
+        for token in special_tokens
+    ]
+    prepared_tokens = sorted(set(prepared_tokens), key=lambda token: (-len(token), token))
+    if not prepared_tokens:
+        return None
+    return re.compile("|".join(re.escape(token) for token in prepared_tokens))
+
+
+def _iter_non_special_segments(text: str, split_re: re.Pattern[str] | None):
+    if split_re is None:
+        yield text
+        return
+    for segment in split_re.split(text):
+        if segment:
+            yield segment
+
+
+def _worker_init(
+    pattern_str: str,
+    pattern_flags: int,
+    normalize: str,
+    max_piece_bytes: int,
+    special_tokens: list[str],
+) -> None:
+    global _WORKER_PATTERN, _WORKER_NORMALIZE, _WORKER_MAX_PIECE_BYTES, _WORKER_SPECIAL_SPLIT_RE
     _WORKER_PATTERN = compile_pattern(pattern_str, pattern_flags)
     _WORKER_NORMALIZE = normalize
     _WORKER_MAX_PIECE_BYTES = max_piece_bytes
+    _WORKER_SPECIAL_SPLIT_RE = _compile_special_token_splitter(special_tokens, normalize)
 
 
 def _worker_count_batch(lines: list[str]) -> tuple[Counter[bytes], int]:
@@ -43,11 +75,12 @@ def _worker_count_batch(lines: list[str]) -> tuple[Counter[bytes], int]:
     for line in lines:
         if _WORKER_NORMALIZE != "none":
             line = unicodedata.normalize(_WORKER_NORMALIZE, line)
-        for piece in iter_pieces(_WORKER_PATTERN, line):
-            piece_bytes = piece.encode("utf-8")
-            if len(piece_bytes) <= _WORKER_MAX_PIECE_BYTES:
-                local_counter[piece_bytes] += 1
-                total_pieces += 1
+        for segment in _iter_non_special_segments(line, _WORKER_SPECIAL_SPLIT_RE):
+            for piece in iter_pieces(_WORKER_PATTERN, segment):
+                piece_bytes = piece.encode("utf-8")
+                if len(piece_bytes) <= _WORKER_MAX_PIECE_BYTES:
+                    local_counter[piece_bytes] += 1
+                    total_pieces += 1
     return local_counter, total_pieces
 
 
@@ -256,6 +289,7 @@ def count_pieces(
             pattern_flags,
             data_cfg["normalize"],
             int(cfg["bpe"]["max_piece_bytes"]),
+            list(cfg["special_tokens"]["tokens"]),
         ),
     ) as executor:
         for file_state in progress["files"]:
