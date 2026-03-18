@@ -1,0 +1,31 @@
+{
+  "artifact_id": "tokenizer_owt_train_bpe_50k",
+  "artifact_type": "tokenizer",
+  "checksums": {
+    "merges.txt": "2c37427560174ce9beddc9ccdacfb3c95796982146a2ab96dce20146ad71a821",
+    "special_tokens_map.json": "1ecac9ec78cf97057d231453f726132712ed3360b71d39869b23f7c205cf67b4",
+    "tokenizer_config.json": "1bb2063e63c2fa62a05f102e4187d9c8852fc24bc5e5f5d5d7d16b6aced62fd7",
+    "training_stats.json": "cebfcebc8ee215ee3bb77432a47dec329aa3ea2929278571cec18d286a154e52",
+    "vocab.json": "b4faf31cec2826d58de5c9a1a79e65f5ffa2aaa716121601c7b9dda71500eb61"
+  },
+  "config_hash": "1401260a69eeebeaff17093a9a85b31c23bcf6b0192716126af1240dd2e63efa",
+  "created_at": "2026-03-18T13:20:14Z",
+  "git_commit": "e8c8b8c679907fb7fc8b67fe082599210c4fd3fa",
+  "inputs": [
+    {
+      "artifact_id": "training_corpus",
+      "artifact_type": "raw_files",
+      "hash": "424f0094afa9ff740c03e9d0d45aef129785cdcdfedb18f612fb6096610490ea"
+    }
+  ],
+  "schema_version": "1.0",
+  "source_run_id": "owt_bpe_50k_20260318",
+  "stats": {
+    "export_dir": "artifacts/tokenizer/exports/tokenizer_owt_train_bpe_50k",
+    "num_merges": 49718,
+    "pattern_alias": "gpt2_fast",
+    "pattern_hash": "026823bce947b4c1f05427f03a10eb8bfc44b339753649b09f804a260e9d8029",
+    "training_corpus_sha256": "424f0094afa9ff740c03e9d0d45aef129785cdcdfedb18f612fb6096610490ea",
+    "vocab_size": 50000
+  }
+}

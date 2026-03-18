@@ -14,6 +14,38 @@ Format:
 
 ## Unreleased
 
+### 2026-03-18 (Add dedicated root-level OWT training configs)
+
+Summary:
+
+1. Added dedicated OWT config files for corpus build, dedup, tokenization, packing, and pretraining stages.
+2. Updated the existing OWT tokenizer config to train directly from repository-root `owt_train.txt` instead of `data/raw/owt_train.txt`.
+3. Documented the manual end-to-end OWT run commands and tokenizer resume command using stable artifact IDs.
+
+Impacted files/modules:
+
+1. `configs/corpus_owt_train.yaml`
+2. `configs/dedup_owt_train.yaml`
+3. `configs/tokenizer_bpe_owt_train.yaml`
+4. `configs/tokenize_owt_train.yaml`
+5. `configs/pack_owt_train.yaml`
+6. `configs/train_owt_train.yaml`
+7. `README.md`
+8. `docs/IMPLEMENTED_STEPS.md`
+9. `docs/DIRECTORY_STRUCTURE.md`
+10. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -c "import sys; sys.path.insert(0, 'scripts'); from tokenizer_bpe.config import load_config; cfg = load_config('configs/tokenizer_bpe_owt_train.yaml'); print(cfg['data']['input_paths'][0]); print(cfg['run']['output_dir'])"` passed (`owt_train.txt`, `artifacts/tokenizer/runs_owt_train`).
+2. `python -c "import sys; sys.path.insert(0, 'scripts'); from pipeline_common import load_yaml_config; files = ['configs/corpus_owt_train.yaml','configs/dedup_owt_train.yaml','configs/tokenize_owt_train.yaml','configs/pack_owt_train.yaml','configs/train_owt_train.yaml']; [load_yaml_config(path, {}) for path in files]; print('ok')"` passed (`ok`).
+
+Documentation updates:
+
+1. Updated `README.md` with the dedicated OWT manual run sequence.
+2. Updated `docs/IMPLEMENTED_STEPS.md` runtime commands with the dedicated OWT flow.
+3. Updated `docs/DIRECTORY_STRUCTURE.md` for the added tracked config files.
+
 ### 2026-03-18 (Expand default tokenizer special-token inventory)
 
 Summary:

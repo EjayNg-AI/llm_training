@@ -257,6 +257,15 @@ Tokenizer resume:
 
 1. `python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>`
 
+Dedicated OWT flow from repository-root `owt_train.txt`:
+
+1. `python scripts/01_build_corpus.py --config configs/corpus_owt_train.yaml --run-id owt_corpus_<date_tag>`
+2. `python scripts/02_dedup_exact.py --config configs/dedup_owt_train.yaml --run-id owt_dedup_<date_tag>`
+3. `python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --run-id owt_bpe_50k_<date_tag> --artifact-id tokenizer_owt_train_bpe_50k`
+4. `python scripts/04_tokenize_corpus.py --config configs/tokenize_owt_train.yaml --run-id owt_tokenize_<date_tag>`
+5. `python scripts/05_pack_sequences.py --config configs/pack_owt_train.yaml --run-id owt_pack_<date_tag>`
+6. `python scripts/06_pretrain.py --config configs/train_owt_train.yaml --run-id owt_pretrain_<date_tag>`
+
 Tests:
 
 1. `python -m pytest -q`

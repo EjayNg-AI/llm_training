@@ -1,0 +1,9 @@
+{
+  "config_hash": "1401260a69eeebeaff17093a9a85b31c23bcf6b0192716126af1240dd2e63efa",
+  "final_merge_index": 49718,
+  "num_merges": 49718,
+  "pattern_hash": "026823bce947b4c1f05427f03a10eb8bfc44b339753649b09f804a260e9d8029",
+  "run_dir": "artifacts/tokenizer/runs_owt_train/owt_bpe_50k_20260318",
+  "training_corpus_sha256": "424f0094afa9ff740c03e9d0d45aef129785cdcdfedb18f612fb6096610490ea",
+  "vocab_size": 50000
+}

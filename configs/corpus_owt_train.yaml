@@ -1,0 +1,19 @@
+run:
+  output_dir: "artifacts/runs/01_build_corpus_owt_train"
+  log_level: "INFO"
+  structured_logs: true
+
+artifacts_root: "artifacts"
+
+data:
+  input_paths:
+    - "owt_train.txt"
+  input_format: "text"
+  jsonl_text_field: "text"
+  decode_errors: "replace"
+  normalize: "none"
+  min_chars: 20
+  max_docs: null
+
+artifact:
+  id: "corpus_owt_train_txt"

@@ -1,0 +1,12 @@
+run:
+  output_dir: "artifacts/runs/02_dedup_exact_owt_train"
+  log_level: "INFO"
+  structured_logs: true
+
+artifacts_root: "artifacts"
+
+input:
+  corpus_id: "corpus_owt_train_txt"
+
+artifact:
+  id: "dedup_owt_train_txt"

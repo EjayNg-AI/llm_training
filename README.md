@@ -111,18 +111,23 @@ Tokenizer default policy:
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resume --run-id <run_id>
 ```
 
-### 6) Train tokenizer on `owt_train.txt` (optional large run)
+### 6) Run the dedicated `owt_train.txt` training flow (optional large run)
 
-Place the corpus at `data/raw/owt_train.txt` and use the dedicated run config:
+If the corpus file is stored at the repository root as `owt_train.txt`, use the dedicated OWT configs:
 
 ```bash
-python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --run-id owt_bpe_50k_<date_tag>
+python scripts/01_build_corpus.py --config configs/corpus_owt_train.yaml --run-id owt_corpus_20260318
+python scripts/02_dedup_exact.py --config configs/dedup_owt_train.yaml --run-id owt_dedup_20260318
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --run-id owt_bpe_50k_20260318 --artifact-id tokenizer_owt_train_bpe_50k
+python scripts/04_tokenize_corpus.py --config configs/tokenize_owt_train.yaml --run-id owt_tokenize_20260318
+python scripts/05_pack_sequences.py --config configs/pack_owt_train.yaml --run-id owt_pack_20260318
+python scripts/06_pretrain.py --config configs/train_owt_train.yaml --run-id owt_pretrain_20260318
 ```
 
-Resume that exact run:
+Resume the tokenizer run:
 
 ```bash
-python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --resume --run-id owt_bpe_50k_<date_tag>
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --resume --run-id owt_bpe_50k_20260318 --artifact-id tokenizer_owt_train_bpe_50k
 ```
 
 ### 7) Run tests

@@ -1,6 +1,70 @@
 run:
   output_dir: "artifacts/tokenizer/runs_owt_train"
+  seed: 0
+  log_level: "INFO"
+  structured_logs: true
 
 data:
   input_paths:
-    - "data/raw/owt_train.txt"
+    - "owt_train.txt"
+  input_format: "text"
+  jsonl_text_field: "text"
+  decode_errors: "replace"
+  normalize: "none"
+  max_bytes: null
+  max_lines: null
+  num_workers: 4
+  batch_lines: 2000
+  min_piece_freq: 2
+  max_unique_pieces: 2500000
+
+pretokenizer:
+  pattern: "gpt2_fast"
+  custom_pattern: null
+  flags: []
+
+bpe:
+  vocab_size: 50000
+  min_merge_freq: 2
+  max_merges: null
+  max_word_types: 2500000
+  max_piece_bytes: 200
+  tie_break: "lexicographic"
+
+special_tokens:
+  tokens:
+    - "<|endoftext|>"
+    - "</s>"
+    - "<eos>"
+    - "<s>"
+    - "<bos>"
+    - "<pad>"
+    - "<unk>"
+    - "<|system|>"
+    - "<|user|>"
+    - "<|assistant|>"
+    - "<|im_start|>"
+    - "<|im_end|>"
+    - "<|endofmessage|>"
+    - "<|sep|>"
+    - "<|summarize|>"
+    - "<|translate|>"
+    - "<|code|>"
+    - "<mask>"
+    - "<fim_prefix>"
+    - "<fim_middle>"
+    - "<fim_suffix>"
+    - "<|title|>"
+    - "<|url|>"
+    - "<|date|>"
+    - "<|tool|>"
+    - "<|function_call|>"
+  placement: "end"
+
+checkpointing:
+  wal_fsync_each_commit: false
+  wal_fsync_every_commits: 250
+  snapshot_every_merges: 2000
+  snapshot_every_seconds: 300
+  keep_last_snapshots: 3
+  stage1_snapshot_every_batches: 500

@@ -1,0 +1,15 @@
+run:
+  output_dir: "artifacts/runs/05_pack_sequences_owt_train"
+  log_level: "INFO"
+  structured_logs: true
+
+artifacts_root: "artifacts"
+
+input:
+  token_shards_id: "tokens_owt_train_bpe_50k"
+
+packing:
+  seq_len: 256
+  split_mod: 10
+  val_remainder: 0
+  artifact_id: "packed_owt_train_bpe_50k_seq256"

@@ -1,0 +1,23 @@
+{
+  "config_hash": "1401260a69eeebeaff17093a9a85b31c23bcf6b0192716126af1240dd2e63efa",
+  "config_path": "/home/jenni/llm_training/configs/tokenizer_bpe_owt_train.yaml",
+  "ended_at": "2026-03-18T13:20:14Z",
+  "git_commit": "e8c8b8c679907fb7fc8b67fe082599210c4fd3fa",
+  "hostname": "LAPTOP-LICO2515",
+  "inputs": {
+    "input_paths": [
+      "owt_train.txt"
+    ]
+  },
+  "pid": 37240,
+  "python_version": "3.12.3",
+  "run_id": "owt_bpe_50k_20260318",
+  "stage": "03_train_tokenizer",
+  "started_at": "2026-03-18T12:43:00Z",
+  "status": "completed",
+  "summary": {
+    "artifact_id": "tokenizer_owt_train_bpe_50k",
+    "num_merges": 49718,
+    "training_corpus_sha256": "424f0094afa9ff740c03e9d0d45aef129785cdcdfedb18f612fb6096610490ea"
+  }
+}
