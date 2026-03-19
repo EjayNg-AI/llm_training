@@ -14,6 +14,33 @@ Format:
 
 ## Unreleased
 
+### 2026-03-19 (Add OWT Markdown/LaTeX-aware BPE training config)
+
+Summary:
+
+1. Added a dedicated `owt_train.txt` tokenizer config that reuses the local OWT corpus while selecting the `md_latex_fast_v1` pretokenizer path.
+2. Tightened the Stage 1 worker/cap settings for that OWT Markdown/LaTeX-aware run to match the existing markup-heavy experiment profile.
+3. Documented the manual train and resume commands and added a regression test that loads the new config.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_owt_train_md_latex.yaml`
+2. `tests/tokenizer_bpe/test_config_owt_md_latex.py`
+3. `README.md`
+4. `docs/IMPLEMENTED_STEPS.md`
+5. `docs/DIRECTORY_STRUCTURE.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Pending local config-focused pytest run.
+
+Documentation updates:
+
+1. Updated `README.md` with the OWT Markdown/LaTeX-aware train and resume commands.
+2. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 config summary for the new tracked config.
+3. Updated `docs/DIRECTORY_STRUCTURE.md` with the new config and regression test file.
+
 ### 2026-03-19 (Add TinyStories Markdown/LaTeX-aware BPE training config)
 
 Summary:

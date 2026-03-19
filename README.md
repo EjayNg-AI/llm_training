@@ -126,6 +126,18 @@ Resume that exact run:
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --resume --run-id owt_bpe_64k_<date_tag>
 ```
 
+For the `owt_train.txt` run wired to the Markdown/LaTeX-aware pretokenizer path (`md_latex_fast_v1`), use the dedicated config:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train_md_latex.yaml --run-id owt_md_latex_bpe_64k_<date_tag>
+```
+
+Resume that exact run:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train_md_latex.yaml --resume --run-id owt_md_latex_bpe_64k_<date_tag>
+```
+
 ### 7) Train tokenizer on TinyStories (optional large run)
 
 If the local corpus is present at `data/raw/TinyStoriesV2-GPT4-train.txt`, use the dedicated TinyStories tokenizer config:

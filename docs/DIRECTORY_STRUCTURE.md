@@ -45,6 +45,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - tokenizer_bpe.yaml
   - tokenizer_bpe_md_latex_experiment.yaml
   - tokenizer_bpe_owt_train.yaml
+  - tokenizer_bpe_owt_train_md_latex.yaml
   - tokenizer_bpe_proof_pile_train.yaml
   - tokenizer_bpe_tinystories_32k_train.yaml
   - tokenizer_bpe_tinystories_md_latex_train.yaml
@@ -125,11 +126,12 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - tokenizer_bpe/
     - __init__.py
     - conftest.py
-    - helpers.py
-    - test_byte_unicode.py
-    - test_config.py
-    - test_config_tinystories_md_latex.py
-    - test_export.py
+  - helpers.py
+  - test_byte_unicode.py
+  - test_config.py
+  - test_config_owt_md_latex.py
+  - test_config_tinystories_md_latex.py
+  - test_export.py
     - test_pretokenizer.py
     - test_runtime_check.py
     - test_stage1_count_unit.py

@@ -1,0 +1,9 @@
+{
+  "config_hash": "ccf410516b0e014a643b73ccac8acddcc6aa52f4805cc767b41f42e4adc0432c",
+  "final_merge_index": 63718,
+  "num_merges": 63718,
+  "pattern_hash": "514140eadfea43cf8439a1a65a4e789c3852e2a39feaf3ccfec781ef8e960c5d",
+  "run_dir": "artifacts/tokenizer/runs_owt_train_md_latex/owt_md_latex_bpe_64k_20260319_1203am",
+  "training_corpus_sha256": "123513fc2f45865979926fbb96c1d1506e0ca65d513dc04b28736143210ddf72",
+  "vocab_size": 64000
+}
