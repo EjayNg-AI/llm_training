@@ -304,6 +304,9 @@ checkpointing:
   snapshot_every_seconds: 300
   keep_last_snapshots: 3
   stage1_snapshot_every_batches: 500
+  stage1_cap_every_batches: 100
+  stage1_cap_start_lines: 10000
+  stage1_cap_safety_factor: 1.10
 ```
 
 Default policy:
@@ -326,6 +329,9 @@ Validation rules currently enforced:
 10. `bpe.max_merges >= 0` when provided.
 11. `bpe.max_word_types > 0`.
 12. `checkpointing.wal_fsync_every_commits >= 0`.
+13. `checkpointing.stage1_cap_every_batches >= 1`.
+14. `checkpointing.stage1_cap_start_lines >= 0`.
+15. `checkpointing.stage1_cap_safety_factor >= 1.0`.
 
 Determinism hashes:
 
@@ -390,12 +396,43 @@ Pattern aliases:
 
 ```python
 PATTERN_ALIASES = {
-    "gpt2_default": r"'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+",
-    "gpt2_fast": r"'(?:[sdmt]|ll|ve|re)| ?\p{L}++| ?\p{N}++| ?[^\s\p{L}\p{N}]++|\s++$|\s+(?!\S)|\s",
+    "gpt2_default": (
+        r"'s|'t|'re|'ve|'m|'ll|'d"
+        r"| ?\p{L}+"
+        r"| ?\p{N}+"
+        r"| ?[^\s\p{L}\p{N}]+"
+        r"|\s+(?!\S)|\s+"
+    ),
+    "gpt2_fast": (
+        r"'(?:[sdmt]|ll|ve|re)"
+        r"| ?\p{L}++"
+        r"| ?\p{N}++"
+        r"| ?[^\s\p{L}\p{N}]++"
+        r"|\s++$|\s+(?!\S)|\s"
+    ),
+    "md_latex_fast_v1": (
+        r"'(?:[sdmt]|ll|ve|re)"
+        r"| ?\\(?:[A-Za-z@]+[*]?|.)"
+        r"| ?[_^](?:\{[\p{L}\p{N}]\}|[\p{L}\p{N}])"
+        r"| ?#{1,6}(?=[ \t])"
+        r"| ?\[[ xX]\](?=[ \t])"
+        r"| ?\p{L}++"
+        r"| ?\p{N}++"
+        r"| ?[^\s\p{L}\p{N}]++"
+        r"|\s++$|\s+(?!\S)|\s"
+    ),
 }
 ```
 
-`gpt2_fast` is the default in config. `gpt2_default` is kept for canonical GPT-2 pattern compatibility.
+`gpt2_fast` is the default in config. `gpt2_default` is kept for canonical GPT-2 pattern compatibility. `md_latex_fast_v1` is an additive experiment alias intended for Markdown/LaTeX-heavy corpora.
+
+`md_latex_fast_v1` behavior:
+
+1. Keeps local LaTeX control sequences together when possible, such as `\frac`, `\alpha`, `\%`, `\\`, `\[` and `\(`.
+2. Keeps local `_` / `^` math affixes together for simple forms such as `_i`, `^2`, `_{i}`, and `^{n}`.
+3. Adds only local Markdown heads for `###`-style headings and `[x]` / `[ ]` task boxes.
+4. Does not add whole-span atomic matches for inline math, display math, links, URLs, code fences, or LaTeX environments.
+5. Leaves ordered-list numbering and generic bullet punctuation to the existing number and punctuation branches.
 
 Supported flags via config:
 
@@ -532,10 +569,15 @@ Offset and byte semantics (normative):
 
 Pruning logic:
 
-1. Every 100 merged batches (after at least 10,000 lines), optionally cap in-memory counter.
-2. Enforce `data.max_unique_pieces` using deterministic top-K:
+1. On a configurable periodic cadence, optionally cap the in-memory counter when:
+   - `merged_batches % checkpointing.stage1_cap_every_batches == 0`, and
+   - `total_lines_processed >= checkpointing.stage1_cap_start_lines`.
+2. Independently apply an early safety cap when `len(piece_counts) > data.max_unique_pieces * checkpointing.stage1_cap_safety_factor`.
+3. Enforce `data.max_unique_pieces` using deterministic top-K:
    - sort key: frequency descending, bytes lexicographic ascending.
-3. `data.min_piece_freq` is applied once in Stage 2 (not during Stage 1 streaming).
+4. `data.min_piece_freq` is applied once in Stage 2 (not during Stage 1 streaming).
+
+The deterministic `_counter_top_k` helper is unchanged. These controls only change when Stage 1 trims the in-memory inventory, not how ties are resolved.
 
 Final Stage 1 output:
 

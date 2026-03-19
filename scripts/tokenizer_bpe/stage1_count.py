@@ -263,6 +263,9 @@ def count_pieces(
     max_unique_pieces = data_cfg["max_unique_pieces"]
     snapshot_every_batches = int(checkpoint_cfg["stage1_snapshot_every_batches"])
     snapshot_every_seconds = int(checkpoint_cfg["snapshot_every_seconds"])
+    stage1_cap_every_batches = int(checkpoint_cfg.get("stage1_cap_every_batches", 100))
+    stage1_cap_start_lines = int(checkpoint_cfg.get("stage1_cap_start_lines", 10000))
+    stage1_cap_safety_factor = float(checkpoint_cfg.get("stage1_cap_safety_factor", 1.10))
 
     logger.info(
         "Stage 1 starting: files=%s workers=%s batch_lines=%s",
@@ -368,12 +371,26 @@ def count_pieces(
 
                         # Keep a single deterministic approximation knob in Stage 1:
                         # optional top-K capping by absolute count.
-                        if (
-                            max_unique_pieces is not None
-                            and merged_batches % 100 == 0
-                            and progress["total_lines_processed"] >= 10000
-                        ):
-                            piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
+                        if max_unique_pieces is not None:
+                            periodic_cap = (
+                                merged_batches % stage1_cap_every_batches == 0
+                                and progress["total_lines_processed"] >= stage1_cap_start_lines
+                            )
+                            safety_cap = len(piece_counts) > int(
+                                max_unique_pieces * stage1_cap_safety_factor
+                            )
+                            if periodic_cap or safety_cap:
+                                unique_before = len(piece_counts)
+                                piece_counts = _counter_top_k(piece_counts, int(max_unique_pieces))
+                                if safety_cap and not periodic_cap:
+                                    logger.info(
+                                        "Stage 1 safety cap: unique_before=%s unique_after=%s "
+                                        "max_unique_pieces=%s factor=%s",
+                                        unique_before,
+                                        len(piece_counts),
+                                        max_unique_pieces,
+                                        stage1_cap_safety_factor,
+                                    )
 
                         now = time.time()
                         if (

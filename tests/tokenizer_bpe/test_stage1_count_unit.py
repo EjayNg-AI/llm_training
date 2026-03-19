@@ -168,3 +168,68 @@ def test_load_stage1_checkpoint_round_trip(tmp_path):
     loaded_counts, loaded_progress = loaded
     assert loaded_counts == counts
     assert loaded_progress["snapshot_id"] == 2
+
+
+def test_count_pieces_stage1_safety_cap_triggers_early(tmp_path, tokenizer_logger, monkeypatch):
+    corpus_path = tmp_path / "train.txt"
+    corpus_path.write_text("a\nb\nc\nd\n", encoding="utf-8")
+
+    cfg = {
+        "data": {
+            "input_paths": [str(corpus_path)],
+            "input_format": "text",
+            "jsonl_text_field": "text",
+            "decode_errors": "replace",
+            "normalize": "none",
+            "max_bytes": None,
+            "max_lines": None,
+            "num_workers": 1,
+            "batch_lines": 1,
+            "max_unique_pieces": 2,
+        },
+        "checkpointing": {
+            "stage1_snapshot_every_batches": 999999,
+            "snapshot_every_seconds": 999999,
+            "stage1_cap_every_batches": 999999,
+            "stage1_cap_start_lines": 10**9,
+            "stage1_cap_safety_factor": 1.0,
+        },
+        "bpe": {
+            "max_piece_bytes": 200,
+        },
+        "special_tokens": {
+            "tokens": ["<|endoftext|>"],
+            "placement": "end",
+        },
+        "meta": {
+            "config_hash": "cfg",
+        },
+    }
+
+    call_counter = {"n": 0}
+    original_top_k = stage1_count_module._counter_top_k
+
+    def wrapped_top_k(counter, k):
+        call_counter["n"] += 1
+        return original_top_k(counter, k)
+
+    monkeypatch.setattr(stage1_count_module, "_counter_top_k", wrapped_top_k)
+
+    original_executor = stage1_count_module.ProcessPoolExecutor
+    stage1_count_module.ProcessPoolExecutor = ThreadPoolExecutor
+    try:
+        piece_counts, metadata = count_pieces(
+            cfg=cfg,
+            run_dir=tmp_path / "run",
+            pattern_str=PATTERN_ALIASES["gpt2_fast"],
+            pattern_flags=0,
+            pattern_hash="pat",
+            logger=tokenizer_logger,
+            resume=False,
+        )
+    finally:
+        stage1_count_module.ProcessPoolExecutor = original_executor
+
+    assert len(piece_counts) <= 2
+    assert metadata["total_lines_processed"] == 4
+    assert call_counter["n"] >= 2

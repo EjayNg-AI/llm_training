@@ -1,0 +1,14 @@
+data:
+  normalize: "none"
+  num_workers: 3
+  batch_lines: 1500
+
+pretokenizer:
+  pattern: "md_latex_fast_v1"
+  custom_pattern: null
+  flags: []
+
+checkpointing:
+  stage1_cap_every_batches: 50
+  stage1_cap_start_lines: 5000
+  stage1_cap_safety_factor: 1.05

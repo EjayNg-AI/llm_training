@@ -14,6 +14,41 @@ Format:
 
 ## Unreleased
 
+### 2026-03-19 (Add Markdown/LaTeX-aware BPE experiment alias and Stage 1 safety caps)
+
+Summary:
+
+1. Added a versioned `md_latex_fast_v1` pretokenizer alias that keeps local LaTeX commands, simple `_` / `^` math affixes, Markdown headings, and Markdown task boxes together without changing the default `gpt2_fast` alias.
+2. Added configurable Stage 1 periodic cap knobs plus an early deterministic safety-cap path for transient unique-piece spikes.
+3. Added a tracked experiment config for Markdown/LaTeX-heavy tokenizer A/B runs.
+4. Extended tokenizer unit coverage for the new alias, config validation, and early Stage 1 safety-cap behavior.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/pretokenizer.py`
+2. `scripts/tokenizer_bpe/config.py`
+3. `scripts/tokenizer_bpe/stage1_count.py`
+4. `configs/tokenizer_bpe_md_latex_experiment.yaml`
+5. `tests/tokenizer_bpe/test_pretokenizer.py`
+6. `tests/tokenizer_bpe/test_config.py`
+7. `tests/tokenizer_bpe/test_stage1_count_unit.py`
+8. `README.md`
+9. `docs/TOKENIZER_BPE.md`
+10. `docs/IMPLEMENTED_STEPS.md`
+11. `docs/DIRECTORY_STRUCTURE.md`
+12. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Pending local tokenizer test runs.
+
+Documentation updates:
+
+1. Updated `README.md` with the experiment config entrypoint and Stage 1 cap summary.
+2. Updated `docs/TOKENIZER_BPE.md` with the new alias contract and configurable Stage 1 pruning behavior.
+3. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 summary for the additive alias and safety-cap path.
+4. Updated `docs/DIRECTORY_STRUCTURE.md` with the new tracked config file.
+
 ### 2026-03-19 (Expand BPE training corpus ignore rules)
 
 Summary:

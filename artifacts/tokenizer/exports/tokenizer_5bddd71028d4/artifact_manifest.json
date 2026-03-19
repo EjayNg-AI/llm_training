@@ -1,0 +1,31 @@
+{
+  "artifact_id": "tokenizer_5bddd71028d4",
+  "artifact_type": "tokenizer",
+  "checksums": {
+    "merges.txt": "80b23111b45224a5d233d1e6592db748c63b4f163f6f8515a131a77013141ec5",
+    "special_tokens_map.json": "1ecac9ec78cf97057d231453f726132712ed3360b71d39869b23f7c205cf67b4",
+    "tokenizer_config.json": "9e7be5a2e4b87a64d15798c2470fc7ed6ae13c66e84b73800e58956046367890",
+    "training_stats.json": "63ee20a8a480785723ca541cf8d7a8b5570b7576da09abe00e579d3317650270",
+    "vocab.json": "633019017289a2aa8f2180efbff20abcdfde2b89bdb37cc8beb34ecd06147da2"
+  },
+  "config_hash": "75ed90b95f1868e76df221e1d6b140c8db1e337aca8d0470a8bd424f07209799",
+  "created_at": "2026-03-19T11:12:31Z",
+  "git_commit": "1745954f9e87b058f9b7b516e81e55136bc9d154",
+  "inputs": [
+    {
+      "artifact_id": "training_corpus",
+      "artifact_type": "raw_files",
+      "hash": "7e734878ab9909acec5ff6999fe0c4b5e678fa28d5f65855bf19fe7eea64e0a7"
+    }
+  ],
+  "schema_version": "1.0",
+  "source_run_id": "tinystories_bpe_64k_20260319",
+  "stats": {
+    "export_dir": "artifacts/tokenizer/exports/tokenizer_5bddd71028d4",
+    "num_merges": 53692,
+    "pattern_alias": "gpt2_fast",
+    "pattern_hash": "026823bce947b4c1f05427f03a10eb8bfc44b339753649b09f804a260e9d8029",
+    "training_corpus_sha256": "7e734878ab9909acec5ff6999fe0c4b5e678fa28d5f65855bf19fe7eea64e0a7",
+    "vocab_size": 53974
+  }
+}

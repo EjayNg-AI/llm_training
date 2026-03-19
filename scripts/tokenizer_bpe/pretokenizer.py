@@ -8,8 +8,31 @@ import regex
 
 
 PATTERN_ALIASES: dict[str, str] = {
-    "gpt2_default": r"'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+",
-    "gpt2_fast": r"'(?:[sdmt]|ll|ve|re)| ?\p{L}++| ?\p{N}++| ?[^\s\p{L}\p{N}]++|\s++$|\s+(?!\S)|\s",
+    "gpt2_default": (
+        r"'s|'t|'re|'ve|'m|'ll|'d"
+        r"| ?\p{L}+"
+        r"| ?\p{N}+"
+        r"| ?[^\s\p{L}\p{N}]+"
+        r"|\s+(?!\S)|\s+"
+    ),
+    "gpt2_fast": (
+        r"'(?:[sdmt]|ll|ve|re)"
+        r"| ?\p{L}++"
+        r"| ?\p{N}++"
+        r"| ?[^\s\p{L}\p{N}]++"
+        r"|\s++$|\s+(?!\S)|\s"
+    ),
+    "md_latex_fast_v1": (
+        r"'(?:[sdmt]|ll|ve|re)"
+        r"| ?\\(?:[A-Za-z@]+[*]?|.)"
+        r"| ?[_^](?:\{[\p{L}\p{N}]\}|[\p{L}\p{N}])"
+        r"| ?#{1,6}(?=[ \t])"
+        r"| ?\[[ xX]\](?=[ \t])"
+        r"| ?\p{L}++"
+        r"| ?\p{N}++"
+        r"| ?[^\s\p{L}\p{N}]++"
+        r"|\s++$|\s+(?!\S)|\s"
+    ),
 }
 
 FLAG_ALIASES = {
@@ -52,4 +75,3 @@ def compile_pattern(pattern_str: str, pattern_flags: int) -> regex.Pattern:
 def iter_pieces(compiled_pattern: regex.Pattern, text: str) -> Iterator[str]:
     for match in compiled_pattern.finditer(text):
         yield match.group(0)
-

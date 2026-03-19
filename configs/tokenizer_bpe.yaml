@@ -68,3 +68,6 @@ checkpointing:
   snapshot_every_seconds: 300
   keep_last_snapshots: 3
   stage1_snapshot_every_batches: 500
+  stage1_cap_every_batches: 100
+  stage1_cap_start_lines: 10000
+  stage1_cap_safety_factor: 1.10

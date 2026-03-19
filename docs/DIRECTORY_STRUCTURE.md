@@ -43,6 +43,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - sft.yaml
   - tokenize.yaml
   - tokenizer_bpe.yaml
+  - tokenizer_bpe_md_latex_experiment.yaml
   - tokenizer_bpe_owt_train.yaml
   - tokenizer_bpe_proof_pile_train.yaml
   - tokenizer_bpe_tinystories_32k_train.yaml

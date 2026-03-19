@@ -85,6 +85,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "snapshot_every_seconds": 300,
         "keep_last_snapshots": 3,
         "stage1_snapshot_every_batches": 500,
+        "stage1_cap_every_batches": 100,
+        "stage1_cap_start_lines": 10000,
+        "stage1_cap_safety_factor": 1.10,
     },
 }
 
@@ -134,6 +137,12 @@ def _validate(cfg: dict[str, Any]) -> None:
         raise ValueError("bpe.max_word_types must be > 0")
     if int(cfg["checkpointing"].get("wal_fsync_every_commits", 0)) < 0:
         raise ValueError("checkpointing.wal_fsync_every_commits must be >= 0")
+    if int(cfg["checkpointing"].get("stage1_cap_every_batches", 100)) < 1:
+        raise ValueError("checkpointing.stage1_cap_every_batches must be >= 1")
+    if int(cfg["checkpointing"].get("stage1_cap_start_lines", 10000)) < 0:
+        raise ValueError("checkpointing.stage1_cap_start_lines must be >= 0")
+    if float(cfg["checkpointing"].get("stage1_cap_safety_factor", 1.10)) < 1.0:
+        raise ValueError("checkpointing.stage1_cap_safety_factor must be >= 1.0")
 
 
 def canonical_config_json(cfg: dict[str, Any]) -> str:

@@ -63,8 +63,10 @@ Current behavior:
 
 1. Reuses existing tokenizer implementation modules under `scripts/tokenizer_bpe/`:
    - regex pretokenization
+   - additive versioned Markdown/LaTeX-aware regex alias (`md_latex_fast_v1`) for experiment configs while keeping `gpt2_fast` as the default
    - Stage 1 multiprocessing piece counting with out-of-order worker completion and deterministic in-order merge application
    - Stage 1 special-token stripping after optional normalization and before regex pretokenization, so configured special-token literals never affect learned counts or merges
+   - configurable Stage 1 periodic top-K capping plus deterministic early safety-cap trimming when unique piece counts spike above `max_unique_pieces * stage1_cap_safety_factor`
    - expanded default special-token inventory covering BOS/EOS/PAD/UNK plus chat, FIM, and metadata/control markers
    - Stage 2/3 compact integer-array state (`array('H'/'I')` words + array-backed freqs)
    - Stage 3 packed pair IDs (`pair_id = (a << 32) | b`), append-light pair index maintenance, heap pressure controls, and WAL + snapshot recovery
@@ -91,6 +93,7 @@ Resume contract:
 2. Resume validates WAL hash binding (`wal.meta.json`) against current `config_hash`/`pattern_hash`.
 3. WAL replay enforces contiguous merge indices and non-noop replay merges.
 4. Default policy keeps `max_bytes`, `max_lines`, and `max_merges` unlimited unless set, while `max_unique_pieces` defaults to `3500000`, `max_word_types` defaults to `3000000`, and `vocab_size` defaults to `64000`.
+5. Default Stage 1 capping keeps `checkpointing.stage1_cap_every_batches=100`, `checkpointing.stage1_cap_start_lines=10000`, and `checkpointing.stage1_cap_safety_factor=1.10`, while the tracked experiment config `configs/tokenizer_bpe_md_latex_experiment.yaml` tightens those knobs for Markdown/LaTeX-heavy corpora without changing repository defaults.
 
 ## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
 

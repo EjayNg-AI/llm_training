@@ -42,6 +42,9 @@ def test_load_config_applies_defaults_and_meta(tmp_path):
     assert cfg["bpe"]["max_word_types"] == 3000000
     assert cfg["special_tokens"]["tokens"] == DEFAULT_CONFIG["special_tokens"]["tokens"]
     assert cfg["special_tokens"]["placement"] == "end"
+    assert cfg["checkpointing"]["stage1_cap_every_batches"] == 100
+    assert cfg["checkpointing"]["stage1_cap_start_lines"] == 10000
+    assert cfg["checkpointing"]["stage1_cap_safety_factor"] == 1.10
     assert cfg["meta"]["config_path"] == str(cfg_path.resolve())
     assert len(cfg["meta"]["config_hash"]) == 64
 
@@ -138,6 +141,27 @@ def test_load_config_rejects_negative_wal_fsync_every_commits(tmp_path):
     cfg_path = tmp_path / "tokenizer.yaml"
     cfg_path.write_text("checkpointing:\n  wal_fsync_every_commits: -1\n", encoding="utf-8")
     with pytest.raises(ValueError, match="wal_fsync_every_commits"):
+        load_config(cfg_path)
+
+
+def test_load_config_rejects_invalid_stage1_cap_every_batches(tmp_path):
+    cfg_path = tmp_path / "tokenizer.yaml"
+    cfg_path.write_text("checkpointing:\n  stage1_cap_every_batches: 0\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="stage1_cap_every_batches"):
+        load_config(cfg_path)
+
+
+def test_load_config_rejects_invalid_stage1_cap_start_lines(tmp_path):
+    cfg_path = tmp_path / "tokenizer.yaml"
+    cfg_path.write_text("checkpointing:\n  stage1_cap_start_lines: -1\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="stage1_cap_start_lines"):
+        load_config(cfg_path)
+
+
+def test_load_config_rejects_invalid_stage1_cap_safety_factor(tmp_path):
+    cfg_path = tmp_path / "tokenizer.yaml"
+    cfg_path.write_text("checkpointing:\n  stage1_cap_safety_factor: 0.99\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="stage1_cap_safety_factor"):
         load_config(cfg_path)
 
 

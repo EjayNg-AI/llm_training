@@ -102,6 +102,7 @@ Tokenizer default policy:
 - `max_bytes` and `max_lines` are unlimited unless explicitly set.
 - `max_merges` is unlimited as an explicit cap; when unset, target merges are derived from `vocab_size`.
 - `max_unique_pieces` defaults to `3500000`, `max_word_types` defaults to `3000000`, and `vocab_size` defaults to `64000`.
+- Stage 1 periodic piece-count capping now stays configurable through `checkpointing.stage1_cap_every_batches` and `checkpointing.stage1_cap_start_lines`, with an optional safety cap at `max_unique_pieces * checkpointing.stage1_cap_safety_factor`.
 - the default `special_tokens.tokens` inventory includes end-of-text, BOS/EOS/PAD/UNK, chat-role, message-boundary, FIM, and metadata/control markers as listed in `configs/tokenizer_bpe.yaml`
 - configured `special_tokens.tokens` are stripped from Stage 1 training text before regex pretokenization, so literal special-token text does not affect learned merges
 
@@ -153,7 +154,15 @@ Resume that exact run:
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_train.yaml --resume --run-id proof_pile_bpe_64k_<date_tag>
 ```
 
-### 9) Run tests
+### 9) Run the Markdown/LaTeX tokenizer experiment config (optional)
+
+The versioned alias `md_latex_fast_v1` is available for A/B runs through the dedicated experiment config. It keeps `gpt2_fast` as the repository default while making local LaTeX commands, `_`/`^` affixes, Markdown headings, and task boxes tokenizable as smaller units.
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_md_latex_experiment.yaml --run-id md_latex_bpe_<date_tag>
+```
+
+### 10) Run tests
 
 Run all tests:
 
@@ -173,7 +182,7 @@ Run fast tokenizer unit tests only (skip integration-marked tokenizer tests):
 python -m pytest -q tests/tokenizer_bpe -m "not integration"
 ```
 
-### 10) Remove `Zone.Identifier` files (optional)
+### 11) Remove `Zone.Identifier` files (optional)
 
 ```bash
 python scripts/cleanup_zone_identifier.py --dry-run
