@@ -1,6 +1,6 @@
 # Repository directory structure
 
-Generated from `git ls-files` on 2026-03-06.
+Generated from `git ls-files` on 2026-03-19.
 
 This is the canonical tracked structure of the repository as documented in `AGENTS.md`.
 
@@ -44,6 +44,8 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - tokenize.yaml
   - tokenizer_bpe.yaml
   - tokenizer_bpe_owt_train.yaml
+  - tokenizer_bpe_proof_pile_train.yaml
+  - tokenizer_bpe_tinystories_32k_train.yaml
   - train.yaml
 - data/
   - .gitkeep

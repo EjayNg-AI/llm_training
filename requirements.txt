@@ -33,3 +33,5 @@ psutil>=5.9.8
 
 pytest>=8.2.0
 pytest-cov>=5.0.0
+
+datasets

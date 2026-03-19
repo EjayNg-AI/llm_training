@@ -14,6 +14,103 @@ Format:
 
 ## Unreleased
 
+### 2026-03-19 (Expand BPE training corpus ignore rules)
+
+Summary:
+
+1. Expanded `.gitignore` so local `.txt` and `.gz` corpora used for BPE training are ignored more comprehensively.
+2. Added explicit ignore coverage for repository-root `proof_pile` corpora and corpus-name patterns for OWT/OpenWebText, TinyStories, and Proof Pile files outside the generic `train`/`valid` naming scheme.
+
+Impacted files/modules:
+
+1. `.gitignore`
+2. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Pending local `git check-ignore` spot checks.
+
+Documentation updates:
+
+1. Updated `docs/CHANGELOG.md` with the new ignore-rule scope.
+
+### 2026-03-19 (Raise default BPE training caps and target vocab)
+
+Summary:
+
+1. Raised the default tokenizer inventory cap `data.max_unique_pieces` from `2500000` to `3500000`.
+2. Raised the default Stage 2 cap `bpe.max_word_types` from `2500000` to `3000000`.
+3. Raised the default tokenizer target vocabulary size from `50000` to `64000`, and updated the TinyStories training config to follow the new default target.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/config.py`
+2. `configs/tokenizer_bpe.yaml`
+3. `configs/tokenizer_bpe_tinystories_32k_train.yaml`
+4. `README.md`
+5. `docs/TOKENIZER_BPE.md`
+6. `docs/IMPLEMENTED_STEPS.md`
+7. `docs/CHANGELOG.md`
+8. `tests/tokenizer_bpe/test_config.py`
+
+Validation status:
+
+1. Pending local config/unit-test validation.
+
+Documentation updates:
+
+1. Updated `README.md` tokenizer default-policy guidance and override example.
+2. Updated `docs/TOKENIZER_BPE.md` default config block and default-policy contract.
+3. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 default-policy summary.
+
+### 2026-03-19 (Add Proof Pile tokenizer training run config)
+
+Summary:
+
+1. Added a dedicated tokenizer config for training on the local repository-root corpus file `proof_pile.txt`.
+2. Reused the default tokenizer BPE settings in effect at the time, including the then-default `50000` target vocabulary size.
+3. Documented the manual train and resume commands in `README.md`.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_proof_pile_train.yaml`
+2. `README.md`
+3. `docs/DIRECTORY_STRUCTURE.md`
+4. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Pending local config validation.
+
+Documentation updates:
+
+1. Updated `README.md` with Proof Pile train/resume commands.
+2. Updated `docs/DIRECTORY_STRUCTURE.md` with the new tracked config file and refreshed snapshot date.
+
+### 2026-03-19 (Add TinyStories 32k tokenizer training run config)
+
+Summary:
+
+1. Added a dedicated tokenizer config for training on the local TinyStories corpus file `data/raw/TinyStoriesV2-GPT4-train.txt`.
+2. Set the TinyStories tokenizer target vocabulary size to `32000` at the time; this config now follows the repository-wide `64000` default.
+3. Documented the manual train and resume commands in `README.md`.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_tinystories_32k_train.yaml`
+2. `README.md`
+3. `docs/DIRECTORY_STRUCTURE.md`
+4. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -c "import sys; sys.path.insert(0, 'scripts'); from tokenizer_bpe.config import load_config; cfg = load_config('configs/tokenizer_bpe_tinystories_32k_train.yaml'); print(cfg['data']['input_paths'][0]); print(cfg['run']['output_dir']); print(cfg['bpe']['vocab_size'])"` passed at the time (`data/raw/TinyStoriesV2-GPT4-train.txt`, `artifacts/tokenizer/runs_tinystories_train`, `32000`).
+
+Documentation updates:
+
+1. Updated `README.md` with TinyStories train/resume commands.
+2. Updated `docs/DIRECTORY_STRUCTURE.md` with the new tracked config file.
+
 ### 2026-03-18 (Expand default tokenizer special-token inventory)
 
 Summary:

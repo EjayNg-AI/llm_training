@@ -36,9 +36,10 @@ def test_load_config_applies_defaults_and_meta(tmp_path):
     assert cfg["data"]["input_format"] == DEFAULT_CONFIG["data"]["input_format"]
     assert cfg["data"]["max_bytes"] is None
     assert cfg["data"]["max_lines"] is None
-    assert cfg["data"]["max_unique_pieces"] == 2500000
+    assert cfg["data"]["max_unique_pieces"] == 3500000
     assert cfg["bpe"]["max_merges"] is None
-    assert cfg["bpe"]["max_word_types"] == 2500000
+    assert cfg["bpe"]["vocab_size"] == 64000
+    assert cfg["bpe"]["max_word_types"] == 3000000
     assert cfg["special_tokens"]["tokens"] == DEFAULT_CONFIG["special_tokens"]["tokens"]
     assert cfg["special_tokens"]["placement"] == "end"
     assert cfg["meta"]["config_path"] == str(cfg_path.resolve())

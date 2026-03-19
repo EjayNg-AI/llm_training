@@ -1,0 +1,6 @@
+run:
+  output_dir: "artifacts/tokenizer/runs_proof_pile_train"
+
+data:
+  input_paths:
+    - "proof_pile.txt"

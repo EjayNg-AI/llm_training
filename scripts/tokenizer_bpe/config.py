@@ -59,7 +59,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "num_workers": 4,
         "batch_lines": 2000,
         "min_piece_freq": 2,
-        "max_unique_pieces": 2500000,
+        "max_unique_pieces": 3500000,
     },
     "pretokenizer": {
         "pattern": "gpt2_fast",
@@ -67,10 +67,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "flags": [],
     },
     "bpe": {
-        "vocab_size": 50000,
+        "vocab_size": 64000,
         "min_merge_freq": 2,
         "max_merges": None,
-        "max_word_types": 2500000,
+        "max_word_types": 3000000,
         "max_piece_bytes": 200,
         "tie_break": "lexicographic",
     },

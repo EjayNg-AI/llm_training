@@ -252,7 +252,7 @@ data:
   num_workers: 4
   batch_lines: 2000
   min_piece_freq: 2
-  max_unique_pieces: 2500000
+  max_unique_pieces: 3500000
 
 pretokenizer:
   pattern: "gpt2_fast"
@@ -260,10 +260,10 @@ pretokenizer:
   flags: []
 
 bpe:
-  vocab_size: 50000
+  vocab_size: 64000
   min_merge_freq: 2
   max_merges: null
-  max_word_types: 2500000
+  max_word_types: 3000000
   max_piece_bytes: 200
   tie_break: "lexicographic"
 
@@ -310,7 +310,7 @@ Default policy:
 
 1. `data.max_bytes` and `data.max_lines` are unlimited by default (`null`).
 2. `bpe.max_merges` is unlimited as an explicit cap by default (`null`), so target merges are derived from `vocab_size`.
-3. `data.max_unique_pieces` and `bpe.max_word_types` default to `2500000`.
+3. `data.max_unique_pieces` defaults to `3500000`, `bpe.max_word_types` defaults to `3000000`, and `bpe.vocab_size` defaults to `64000`.
 
 Validation rules currently enforced:
 

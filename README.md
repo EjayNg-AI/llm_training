@@ -94,14 +94,14 @@ python scripts/08_eval.py --config configs/eval.yaml
 Tokenizer cap overrides can be set directly on the canonical stage entrypoint:
 
 ```bash
-python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --max-unique-pieces 2500000 --max-word-types 2500000
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --max-unique-pieces 3500000 --max-word-types 3000000
 ```
 
 Tokenizer default policy:
 
 - `max_bytes` and `max_lines` are unlimited unless explicitly set.
 - `max_merges` is unlimited as an explicit cap; when unset, target merges are derived from `vocab_size`.
-- `max_unique_pieces` and `max_word_types` default to `2500000`.
+- `max_unique_pieces` defaults to `3500000`, `max_word_types` defaults to `3000000`, and `vocab_size` defaults to `64000`.
 - the default `special_tokens.tokens` inventory includes end-of-text, BOS/EOS/PAD/UNK, chat-role, message-boundary, FIM, and metadata/control markers as listed in `configs/tokenizer_bpe.yaml`
 - configured `special_tokens.tokens` are stripped from Stage 1 training text before regex pretokenization, so literal special-token text does not affect learned merges
 
@@ -116,16 +116,44 @@ python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe.yaml --resum
 Place the corpus at `data/raw/owt_train.txt` and use the dedicated run config:
 
 ```bash
-python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --run-id owt_bpe_50k_<date_tag>
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --run-id owt_bpe_64k_<date_tag>
 ```
 
 Resume that exact run:
 
 ```bash
-python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --resume --run-id owt_bpe_50k_<date_tag>
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_owt_train.yaml --resume --run-id owt_bpe_64k_<date_tag>
 ```
 
-### 7) Run tests
+### 7) Train tokenizer on TinyStories (optional large run)
+
+If the local corpus is present at `data/raw/TinyStoriesV2-GPT4-train.txt`, use the dedicated TinyStories tokenizer config:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_tinystories_32k_train.yaml --run-id tinystories_bpe_64k_<date_tag>
+```
+
+Resume that exact run:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_tinystories_32k_train.yaml --resume --run-id tinystories_bpe_64k_<date_tag>
+```
+
+### 8) Train tokenizer on `proof_pile.txt` (optional large run)
+
+If the local corpus is present at `proof_pile.txt` in the repository root, use the dedicated run config:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_train.yaml --run-id proof_pile_bpe_64k_<date_tag>
+```
+
+Resume that exact run:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_train.yaml --resume --run-id proof_pile_bpe_64k_<date_tag>
+```
+
+### 9) Run tests
 
 Run all tests:
 
@@ -145,7 +173,7 @@ Run fast tokenizer unit tests only (skip integration-marked tokenizer tests):
 python -m pytest -q tests/tokenizer_bpe -m "not integration"
 ```
 
-### 8) Remove `Zone.Identifier` files (optional)
+### 10) Remove `Zone.Identifier` files (optional)
 
 ```bash
 python scripts/cleanup_zone_identifier.py --dry-run

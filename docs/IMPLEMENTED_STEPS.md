@@ -90,7 +90,7 @@ Resume contract:
 1. `--resume --run-id <run_id>` reuses existing run directory.
 2. Resume validates WAL hash binding (`wal.meta.json`) against current `config_hash`/`pattern_hash`.
 3. WAL replay enforces contiguous merge indices and non-noop replay merges.
-4. Default policy keeps `max_bytes`, `max_lines`, and `max_merges` unlimited unless set, while `max_unique_pieces` and `max_word_types` default to `2500000`.
+4. Default policy keeps `max_bytes`, `max_lines`, and `max_merges` unlimited unless set, while `max_unique_pieces` defaults to `3500000`, `max_word_types` defaults to `3000000`, and `vocab_size` defaults to `64000`.
 
 ## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
 
