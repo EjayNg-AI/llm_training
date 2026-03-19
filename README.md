@@ -140,6 +140,18 @@ Resume that exact run:
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_tinystories_32k_train.yaml --resume --run-id tinystories_bpe_64k_<date_tag>
 ```
 
+For the TinyStories run wired to the Markdown/LaTeX-aware pretokenizer path (`md_latex_fast_v1`), use the dedicated config:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_tinystories_md_latex_train.yaml --run-id tinystories_md_latex_bpe_64k_<date_tag>
+```
+
+Resume that exact run:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_tinystories_md_latex_train.yaml --resume --run-id tinystories_md_latex_bpe_64k_<date_tag>
+```
+
 ### 8) Train tokenizer on `proof_pile.txt` (optional large run)
 
 If the local corpus is present at `proof_pile.txt` in the repository root, use the dedicated run config:

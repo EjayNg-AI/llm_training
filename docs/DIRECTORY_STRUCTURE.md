@@ -47,6 +47,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - tokenizer_bpe_owt_train.yaml
   - tokenizer_bpe_proof_pile_train.yaml
   - tokenizer_bpe_tinystories_32k_train.yaml
+  - tokenizer_bpe_tinystories_md_latex_train.yaml
   - train.yaml
 - data/
   - .gitkeep
@@ -127,6 +128,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
     - helpers.py
     - test_byte_unicode.py
     - test_config.py
+    - test_config_tinystories_md_latex.py
     - test_export.py
     - test_pretokenizer.py
     - test_runtime_check.py

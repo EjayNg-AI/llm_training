@@ -1,0 +1,23 @@
+{
+  "config_hash": "9d1b45e560bc2201491a89325852b22e70b92745890d4647e62148c3b49fcac5",
+  "config_path": "/home/jenni/llm_training/configs/tokenizer_bpe_tinystories_md_latex_train.yaml",
+  "ended_at": "2026-03-19T11:47:30Z",
+  "git_commit": "bbb8db0004a4ab4c8a703a7346cfd6db3ffbc53f",
+  "hostname": "LAPTOP-LICO2515",
+  "inputs": {
+    "input_paths": [
+      "data/raw/TinyStoriesV2-GPT4-train.txt"
+    ]
+  },
+  "pid": 2593,
+  "python_version": "3.12.3",
+  "run_id": "tinystories_md_latex_bpe_64k_20260319_1943",
+  "stage": "03_train_tokenizer",
+  "started_at": "2026-03-19T11:44:12Z",
+  "status": "completed",
+  "summary": {
+    "artifact_id": "tokenizer_b2643fb0d366",
+    "num_merges": 53696,
+    "training_corpus_sha256": "7e734878ab9909acec5ff6999fe0c4b5e678fa28d5f65855bf19fe7eea64e0a7"
+  }
+}
