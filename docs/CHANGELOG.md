@@ -14,6 +14,80 @@ Format:
 
 ## Unreleased
 
+### 2026-03-20 (Point Proof Pile tokenizer config at data/raw corpus path)
+
+Summary:
+
+1. Updated the dedicated Proof Pile tokenizer config to read from `data/raw/proof_pile.txt`, matching the corpus location in this workspace.
+2. Updated the config regression test and README instructions to use the same path.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_proof_pile_train.yaml`
+2. `tests/tokenizer_bpe/test_config_proof_pile.py`
+3. `README.md`
+4. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Pending local config-focused pytest run.
+
+Documentation updates:
+
+1. Updated `README.md` so the Proof Pile instructions reference `data/raw/proof_pile.txt`.
+
+### 2026-03-20 (Restore Proof Pile tokenizer config to repository-wide 64k default)
+
+Summary:
+
+1. Re-pinned the dedicated `proof_pile.txt` tokenizer config to `64000` so it matches the repository-wide default tokenizer vocabulary size.
+2. Corrected the manual train and resume commands so the documented Proof Pile run IDs again match the `64k` configuration.
+3. Updated the Proof Pile config regression test and Stage 03 implementation notes to reflect that all tracked corpus configs now default to `64000`.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_proof_pile_train.yaml`
+2. `tests/tokenizer_bpe/test_config_proof_pile.py`
+3. `README.md`
+4. `docs/IMPLEMENTED_STEPS.md`
+5. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Pending local config-focused pytest run.
+
+Documentation updates:
+
+1. Updated `README.md` with the corrected Proof Pile train and resume commands.
+2. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 summary to note that the Proof Pile config follows the repository-wide `64000` default.
+
+### 2026-03-20 (Re-pin Proof Pile tokenizer config to 50k)
+
+Summary:
+
+1. Restored the dedicated `proof_pile.txt` tokenizer config to the historical `50000` target vocabulary size used by the repository's tracked Proof Pile run.
+2. Corrected the manual train and resume commands so the documented run IDs match that `50k` configuration.
+3. Added a regression test that loads the dedicated Proof Pile config and asserts its key values.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_proof_pile_train.yaml`
+2. `tests/tokenizer_bpe/test_config_proof_pile.py`
+3. `README.md`
+4. `docs/IMPLEMENTED_STEPS.md`
+5. `docs/DIRECTORY_STRUCTURE.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Pending local config-focused pytest run.
+
+Documentation updates:
+
+1. Updated `README.md` with the corrected Proof Pile train and resume commands.
+2. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 summary for the dedicated Proof Pile config.
+3. Updated `docs/DIRECTORY_STRUCTURE.md` with the new tracked regression test file.
+
 ### 2026-03-19 (Add OWT Markdown/LaTeX-aware BPE training config)
 
 Summary:

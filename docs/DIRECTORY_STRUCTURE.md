@@ -130,6 +130,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - test_byte_unicode.py
   - test_config.py
   - test_config_owt_md_latex.py
+  - test_config_proof_pile.py
   - test_config_tinystories_md_latex.py
   - test_export.py
     - test_pretokenizer.py

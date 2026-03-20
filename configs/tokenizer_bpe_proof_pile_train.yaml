@@ -3,4 +3,7 @@ run:
 
 data:
   input_paths:
-    - "proof_pile.txt"
+    - "data/raw/proof_pile.txt"
+
+bpe:
+  vocab_size: 64000

@@ -1,0 +1,17 @@
+{
+  "config_hash": "0556fac03292e64656380d219d82ad81dc2f9233f8e7e5be20fd025877fea632",
+  "config_path": "/home/ngejay3046/llm_training/configs/tokenizer_bpe_proof_pile_train.yaml",
+  "git_commit": "fa3563fe47dcc70c81237e264e267cb578d74693",
+  "hostname": "Python",
+  "inputs": {
+    "input_paths": [
+      "proof_pile.txt"
+    ]
+  },
+  "pid": 121606,
+  "python_version": "3.12.3",
+  "run_id": "proof_pile_bpe_64k_20260320",
+  "stage": "03_train_tokenizer",
+  "started_at": "2026-03-20T03:51:05Z",
+  "status": "running"
+}

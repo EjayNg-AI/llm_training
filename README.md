@@ -166,7 +166,7 @@ python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_tinystories_
 
 ### 8) Train tokenizer on `proof_pile.txt` (optional large run)
 
-If the local corpus is present at `proof_pile.txt` in the repository root, use the dedicated run config:
+If the local corpus is present at `data/raw/proof_pile.txt`, use the dedicated run config:
 
 ```bash
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_train.yaml --run-id proof_pile_bpe_64k_<date_tag>

@@ -93,7 +93,7 @@ Resume contract:
 2. Resume validates WAL hash binding (`wal.meta.json`) against current `config_hash`/`pattern_hash`.
 3. WAL replay enforces contiguous merge indices and non-noop replay merges.
 4. Default policy keeps `max_bytes`, `max_lines`, and `max_merges` unlimited unless set, while `max_unique_pieces` defaults to `3500000`, `max_word_types` defaults to `3000000`, and `vocab_size` defaults to `64000`.
-5. Default Stage 1 capping keeps `checkpointing.stage1_cap_every_batches=100`, `checkpointing.stage1_cap_start_lines=10000`, and `checkpointing.stage1_cap_safety_factor=1.10`, while the tracked Markdown/LaTeX-aware configs `configs/tokenizer_bpe_md_latex_experiment.yaml`, `configs/tokenizer_bpe_tinystories_md_latex_train.yaml`, and `configs/tokenizer_bpe_owt_train_md_latex.yaml` tighten those knobs for markup-heavier corpora without changing repository defaults.
+5. Default Stage 1 capping keeps `checkpointing.stage1_cap_every_batches=100`, `checkpointing.stage1_cap_start_lines=10000`, and `checkpointing.stage1_cap_safety_factor=1.10`, while the tracked Markdown/LaTeX-aware configs `configs/tokenizer_bpe_md_latex_experiment.yaml`, `configs/tokenizer_bpe_tinystories_md_latex_train.yaml`, and `configs/tokenizer_bpe_owt_train_md_latex.yaml` tighten those knobs for markup-heavier corpora without changing repository defaults. The dedicated `configs/tokenizer_bpe_proof_pile_train.yaml` run now follows the repository-wide default `64000` target vocabulary size as well.
 
 ## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
 

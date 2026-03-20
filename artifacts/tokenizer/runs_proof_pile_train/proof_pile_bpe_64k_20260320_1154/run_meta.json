@@ -1,0 +1,23 @@
+{
+  "config_hash": "b4f6e8a7e073cfa6656f6b5098eaabdcbbe1e52c4f4d8cbf231fad9d4f7bef22",
+  "config_path": "/home/ngejay3046/llm_training/configs/tokenizer_bpe_proof_pile_train.yaml",
+  "ended_at": "2026-03-20T04:03:22Z",
+  "git_commit": "fa3563fe47dcc70c81237e264e267cb578d74693",
+  "hostname": "Python",
+  "inputs": {
+    "input_paths": [
+      "data/raw/proof_pile.txt"
+    ]
+  },
+  "pid": 121998,
+  "python_version": "3.12.3",
+  "run_id": "proof_pile_bpe_64k_20260320_1154",
+  "stage": "03_train_tokenizer",
+  "started_at": "2026-03-20T03:54:16Z",
+  "status": "completed",
+  "summary": {
+    "artifact_id": "tokenizer_424657bc80f5",
+    "num_merges": 63718,
+    "training_corpus_sha256": "8ce8579fa4c60430b3b324d71a6595572e2b197e3e47c2fcaf5c4777eef9736b"
+  }
+}
