@@ -1,0 +1,9 @@
+{
+  "config_hash": "b4e49a1ea090bc7b88175fb8cfd4716a00cab1c2ecd55bbbb9bdb72fd716bec0",
+  "final_merge_index": 63718,
+  "num_merges": 63718,
+  "pattern_hash": "514140eadfea43cf8439a1a65a4e789c3852e2a39feaf3ccfec781ef8e960c5d",
+  "run_dir": "artifacts/tokenizer/runs_proof_pile_md_latex_train/proof_pile_md_latex_bpe_64k_20260320_1326",
+  "training_corpus_sha256": "77f2a2656c138c0e4808505af9a891975005d59a4f4689682d99132217a1af92",
+  "vocab_size": 64000
+}
