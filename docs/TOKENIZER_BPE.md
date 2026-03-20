@@ -231,6 +231,13 @@ Config source:
 - `configs/tokenizer_bpe.yaml`
 - defaults merged from `scripts/tokenizer_bpe/config.py`
 
+Tracked Markdown/LaTeX-aware large-corpus run configs:
+
+- `configs/tokenizer_bpe_md_latex_experiment.yaml`
+- `configs/tokenizer_bpe_owt_train_md_latex.yaml`
+- `configs/tokenizer_bpe_tinystories_md_latex_train.yaml`
+- `configs/tokenizer_bpe_proof_pile_md_latex_train.yaml`
+
 Default configuration:
 
 ```yaml

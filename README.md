@@ -178,6 +178,18 @@ Resume that exact run:
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_train.yaml --resume --run-id proof_pile_bpe_64k_<date_tag>
 ```
 
+For the `proof_pile.txt` run wired to the Markdown/LaTeX-aware pretokenizer path (`md_latex_fast_v1`), use the dedicated config:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_md_latex_train.yaml --run-id proof_pile_md_latex_bpe_64k_<date_tag>
+```
+
+Resume that exact run:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_md_latex_train.yaml --resume --run-id proof_pile_md_latex_bpe_64k_<date_tag>
+```
+
 ### 9) Run the Markdown/LaTeX tokenizer experiment config (optional)
 
 The versioned alias `md_latex_fast_v1` is available for A/B runs through the dedicated experiment config. It keeps `gpt2_fast` as the repository default while making local LaTeX commands, `_`/`^` affixes, Markdown headings, and task boxes tokenizable as smaller units.

@@ -14,6 +14,55 @@ Format:
 
 ## Unreleased
 
+### 2026-03-20 (Add repo-root Proof Pile Markdown/LaTeX run note)
+
+Summary:
+
+1. Added a repo-root Markdown note capturing the Proof Pile Markdown/LaTeX-aware tokenizer training command, resume command, validation command, and effective config values.
+2. Recorded the note with an explicit local timestamp so the run spec snapshot is date-stamped in the repository.
+
+Impacted files/modules:
+
+1. `proof_pile_md_latex_training_run.md`
+2. `docs/DIRECTORY_STRUCTURE.md`
+3. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Not applicable beyond content capture; commands in the note reference the already-validated config path.
+
+Documentation updates:
+
+1. Updated `docs/DIRECTORY_STRUCTURE.md` to include the new tracked repo-root Markdown file.
+
+### 2026-03-20 (Add Proof Pile Markdown/LaTeX-aware BPE training config)
+
+Summary:
+
+1. Added a dedicated `proof_pile.txt` tokenizer config that reuses the local Proof Pile corpus while selecting the `md_latex_fast_v1` pretokenizer path.
+2. Matched the existing Markdown/LaTeX large-corpus tuning knobs for Stage 1 worker count, batch size, and safety-cap cadence.
+3. Documented the manual train and resume commands and added a regression test that loads the new config.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_proof_pile_md_latex_train.yaml`
+2. `tests/tokenizer_bpe/test_config_proof_pile_md_latex.py`
+3. `README.md`
+4. `docs/IMPLEMENTED_STEPS.md`
+5. `docs/TOKENIZER_BPE.md`
+6. `docs/DIRECTORY_STRUCTURE.md`
+7. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_config_proof_pile_md_latex.py tests/tokenizer_bpe/test_config_proof_pile.py tests/tokenizer_bpe/test_config_owt_md_latex.py tests/tokenizer_bpe/test_config_tinystories_md_latex.py` passed (`4 passed`).
+
+Documentation updates:
+
+1. Updated `README.md` with Proof Pile Markdown/LaTeX-aware train and resume commands.
+2. Updated `docs/IMPLEMENTED_STEPS.md` and `docs/TOKENIZER_BPE.md` to include the tracked Proof Pile Markdown/LaTeX-aware config.
+3. Updated `docs/DIRECTORY_STRUCTURE.md` with the new tracked config and regression test.
+
 ### 2026-03-20 (Point Proof Pile tokenizer config at data/raw corpus path)
 
 Summary:

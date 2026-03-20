@@ -1,6 +1,6 @@
 # Repository directory structure
 
-Generated from `git ls-files` on 2026-03-19.
+Generated from `git ls-files` on 2026-03-20.
 
 This is the canonical tracked structure of the repository as documented in `AGENTS.md`.
 
@@ -46,6 +46,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - tokenizer_bpe_md_latex_experiment.yaml
   - tokenizer_bpe_owt_train.yaml
   - tokenizer_bpe_owt_train_md_latex.yaml
+  - tokenizer_bpe_proof_pile_md_latex_train.yaml
   - tokenizer_bpe_proof_pile_train.yaml
   - tokenizer_bpe_tinystories_32k_train.yaml
   - tokenizer_bpe_tinystories_md_latex_train.yaml
@@ -67,6 +68,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - TOKENIZER_BPE.md
 - llm_training_overview.md
 - pytest.ini
+- proof_pile_md_latex_training_run.md
 - requirements.txt
 - scripts/
   - 01_build_corpus.py
@@ -130,6 +132,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - test_byte_unicode.py
   - test_config.py
   - test_config_owt_md_latex.py
+  - test_config_proof_pile_md_latex.py
   - test_config_proof_pile.py
   - test_config_tinystories_md_latex.py
   - test_export.py
