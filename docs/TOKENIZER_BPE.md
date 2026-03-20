@@ -279,6 +279,7 @@ bpe:
 special_tokens:
   tokens:
     - "<|endoftext|>"
+    - "<|endofdoc|>"
     - "</s>"
     - "<eos>"
     - "<s>"

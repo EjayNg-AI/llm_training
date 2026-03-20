@@ -14,6 +14,28 @@ Format:
 
 ## Unreleased
 
+### 2026-03-20 (Add end-of-document special token)
+
+Summary:
+
+1. Added `<|endofdoc|>` to the canonical default tokenizer special-token inventory in both the repository config and the code-level defaults.
+2. Updated tokenizer-facing docs to reflect that the default inventory now includes an explicit end-of-document marker in addition to the existing end-of-text and control tokens.
+3. Added a regression assertion that the default loaded config includes `<|endofdoc|>`.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/config.py`
+2. `configs/tokenizer_bpe.yaml`
+3. `tests/tokenizer_bpe/test_config.py`
+4. `README.md`
+5. `docs/TOKENIZER_BPE.md`
+6. `docs/IMPLEMENTED_STEPS.md`
+7. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_config.py tests/tokenizer_bpe/test_export.py` passed (`27 passed`).
+
 ### 2026-03-20 (Add Proof Pile md_latex_fast_v3 training config)
 
 Summary:

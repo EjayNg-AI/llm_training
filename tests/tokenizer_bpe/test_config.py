@@ -41,6 +41,7 @@ def test_load_config_applies_defaults_and_meta(tmp_path):
     assert cfg["bpe"]["vocab_size"] == 64000
     assert cfg["bpe"]["max_word_types"] == 3000000
     assert cfg["special_tokens"]["tokens"] == DEFAULT_CONFIG["special_tokens"]["tokens"]
+    assert "<|endofdoc|>" in cfg["special_tokens"]["tokens"]
     assert cfg["special_tokens"]["placement"] == "end"
     assert cfg["checkpointing"]["stage1_cap_every_batches"] == 100
     assert cfg["checkpointing"]["stage1_cap_start_lines"] == 10000

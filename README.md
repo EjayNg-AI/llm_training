@@ -103,7 +103,7 @@ Tokenizer default policy:
 - `max_merges` is unlimited as an explicit cap; when unset, target merges are derived from `vocab_size`.
 - `max_unique_pieces` defaults to `3500000`, `max_word_types` defaults to `3000000`, and `vocab_size` defaults to `64000`.
 - Stage 1 periodic piece-count capping now stays configurable through `checkpointing.stage1_cap_every_batches` and `checkpointing.stage1_cap_start_lines`, with an optional safety cap at `max_unique_pieces * checkpointing.stage1_cap_safety_factor`.
-- the default `special_tokens.tokens` inventory includes end-of-text, BOS/EOS/PAD/UNK, chat-role, message-boundary, FIM, and metadata/control markers as listed in `configs/tokenizer_bpe.yaml`
+- the default `special_tokens.tokens` inventory includes end-of-text, end-of-document, BOS/EOS/PAD/UNK, chat-role, message-boundary, FIM, and metadata/control markers as listed in `configs/tokenizer_bpe.yaml`
 - configured `special_tokens.tokens` are stripped from Stage 1 training text before regex pretokenization, so literal special-token text does not affect learned merges
 
 ### 5) Resume tokenizer training after interruption (optional)

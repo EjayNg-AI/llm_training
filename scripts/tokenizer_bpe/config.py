@@ -13,6 +13,7 @@ import yaml
 
 DEFAULT_SPECIAL_TOKENS = [
     "<|endoftext|>",
+    "<|endofdoc|>",
     "</s>",
     "<eos>",
     "<s>",
