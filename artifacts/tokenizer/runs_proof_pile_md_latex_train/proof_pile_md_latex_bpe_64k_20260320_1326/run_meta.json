@@ -18,6 +18,6 @@
   "summary": {
     "artifact_id": "tokenizer_20c5e03a4121",
     "num_merges": 63718,
-    "training_corpus_sha256": "77f2a2656c138c0e4808505af9a891975005d59a4f4689682d99132217a1af92"
+    "training_corpus_sha256": "d91e3a3e8747c2f4fae030950b0e3e1ff5d781f81a36e59474099706ef652172"
   }
 }

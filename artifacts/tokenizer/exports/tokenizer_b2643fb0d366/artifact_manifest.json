@@ -4,8 +4,8 @@
   "checksums": {
     "merges.txt": "47140fa1d32ebcbad19556d76e1f114374fb9c483e5bd0c91f48dd2737c7f6d9",
     "special_tokens_map.json": "1ecac9ec78cf97057d231453f726132712ed3360b71d39869b23f7c205cf67b4",
-    "tokenizer_config.json": "fe98eb20bd83509202f92dba18e78751e312bfb02394b7345f26a0e1eb2c8284",
-    "training_stats.json": "7da9b20e7fdb2fea580c6782365bfe991113ba765595aa0fe514900372437287",
+    "tokenizer_config.json": "314188a511f12a9f875e0bec44dda479bc80579ac85cd871897baf40def18c87",
+    "training_stats.json": "f30f855ce0e796fce7fca02214853441163438b016687125588ce85e016d4ae8",
     "vocab.json": "e1fe4859dd630cd705599980bc0bd1c141456fed668a576c8f8c7a81102ade9d"
   },
   "config_hash": "9d1b45e560bc2201491a89325852b22e70b92745890d4647e62148c3b49fcac5",
@@ -15,7 +15,7 @@
     {
       "artifact_id": "training_corpus",
       "artifact_type": "raw_files",
-      "hash": "7e734878ab9909acec5ff6999fe0c4b5e678fa28d5f65855bf19fe7eea64e0a7"
+      "hash": "8ee32e2ee9a313e55c13f5326b7fe0e230ad0e5f54328f8dea72f2787239ed66"
     }
   ],
   "schema_version": "1.0",
@@ -25,7 +25,7 @@
     "num_merges": 53696,
     "pattern_alias": "md_latex_fast_v1",
     "pattern_hash": "514140eadfea43cf8439a1a65a4e789c3852e2a39feaf3ccfec781ef8e960c5d",
-    "training_corpus_sha256": "7e734878ab9909acec5ff6999fe0c4b5e678fa28d5f65855bf19fe7eea64e0a7",
+    "training_corpus_sha256": "8ee32e2ee9a313e55c13f5326b7fe0e230ad0e5f54328f8dea72f2787239ed66",
     "vocab_size": 53978
   }
 }

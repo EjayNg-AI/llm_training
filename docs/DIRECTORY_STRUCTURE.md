@@ -4,37 +4,124 @@ Generated from `git ls-files` on 2026-03-20.
 
 This is the canonical tracked structure of the repository as documented in `AGENTS.md`.
 
-- .agents/
-  - skills/
-    - openai-api-background-mode/
+- .agents
+  - skills
+    - openai-api-background-mode
       - SKILL.md
-      - agents/
+      - agents
         - openai.yaml
-      - references/
+      - references
         - background_mode_notes.md
-      - scripts/
+      - scripts
         - monitor_background_response.py
         - run_background_response.py
-    - openai-latex-transcription-background/
+    - openai-latex-transcription-background
       - SKILL.md
-      - agents/
+      - agents
         - openai.yaml
-      - references/
+      - references
         - workflow-template.md
 - .gitignore
 - AGENTS.md
 - CHECKPOINTING.md
 - CONFIG.md
+- HANDOFF_BUNDLE_GENERATION_RECORD.md
 - README.md
-- artifacts/
+- artifacts
   - .gitkeep
-  - eval/
+  - eval
     - .gitkeep
-  - models/
+  - models
     - .gitkeep
-  - tokenizer/
+  - tokenizer
     - .gitkeep
-- configs/
+    - exports
+      - tokenizer_0311386c7746
+        - artifact_manifest.json
+        - merges.txt
+        - special_tokens_map.json
+        - tokenizer_config.json
+        - training_stats.json
+        - vocab.json
+      - tokenizer_20c5e03a4121
+        - artifact_manifest.json
+        - merges.txt
+        - special_tokens_map.json
+        - tokenizer_config.json
+        - training_stats.json
+        - vocab.json
+      - tokenizer_424657bc80f5
+        - artifact_manifest.json
+        - merges.txt
+        - special_tokens_map.json
+        - tokenizer_config.json
+        - training_stats.json
+        - vocab.json
+      - tokenizer_5bddd71028d4
+        - artifact_manifest.json
+        - merges.txt
+        - special_tokens_map.json
+        - tokenizer_config.json
+        - training_stats.json
+        - vocab.json
+      - tokenizer_843230d434b0
+        - artifact_manifest.json
+        - merges.txt
+        - special_tokens_map.json
+        - tokenizer_config.json
+        - training_stats.json
+        - vocab.json
+      - tokenizer_b2643fb0d366
+        - artifact_manifest.json
+        - merges.txt
+        - special_tokens_map.json
+        - tokenizer_config.json
+        - training_stats.json
+        - vocab.json
+      - tokenizer_ebd258bfefd1
+        - artifact_manifest.json
+        - merges.txt
+        - special_tokens_map.json
+        - tokenizer_config.json
+        - training_stats.json
+        - vocab.json
+      - tokenizer_f70cebcc84fb
+        - artifact_manifest.json
+        - merges.txt
+        - special_tokens_map.json
+        - tokenizer_config.json
+        - training_stats.json
+        - vocab.json
+      - tokenizer_owt_bpe_50k_manual_20260317_205339
+        - artifact_manifest.json
+        - merges.txt
+        - special_tokens_map.json
+        - tokenizer_config.json
+        - training_stats.json
+        - vocab.json
+    - runs_proof_pile_md_latex_train
+      - proof_pile_md_latex_bpe_64k_20260320_1326
+        - export_manifest.json
+        - merges.wal
+        - run_meta.json
+        - snapshots
+          - state.m00060000.pkl.sha256
+          - state.m00062000.pkl.sha256
+          - state.m00063718.pkl.sha256
+        - state.json
+        - wal.meta.json
+    - runs_proof_pile_train
+      - proof_pile_bpe_64k_20260320_1154
+        - export_manifest.json
+        - merges.wal
+        - run_meta.json
+        - snapshots
+          - state.m00060000.pkl.sha256
+          - state.m00062000.pkl.sha256
+          - state.m00063718.pkl.sha256
+        - state.json
+        - wal.meta.json
+- configs
   - base.yaml
   - corpus.yaml
   - dedup.yaml
@@ -51,13 +138,13 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - tokenizer_bpe_tinystories_32k_train.yaml
   - tokenizer_bpe_tinystories_md_latex_train.yaml
   - train.yaml
-- data/
+- data
   - .gitkeep
-  - processed/
+  - processed
     - .gitkeep
-  - raw/
+  - raw
     - .gitkeep
-- docs/
+- docs
   - CHANGELOG.md
   - DEVELOPMENT_WORKFLOW.md
   - DIRECTORY_STRUCTURE.md
@@ -66,11 +153,16 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - PROJECT_STATUS.md
   - README.md
   - TOKENIZER_BPE.md
+- download_proof_pile.py
+- generate_swe_implemented_docs.py
+- implemented_docs_bundle.txt
+- latex-aware-bpe.md
 - llm_training_overview.md
-- pytest.ini
+- proof_pile_64k_run_comparison.md
 - proof_pile_md_latex_training_run.md
+- pytest.ini
 - requirements.txt
-- scripts/
+- scripts
   - 01_build_corpus.py
   - 01_make_corpus.py
   - 02_dedup_exact.py
@@ -87,7 +179,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - _bootstrap.py
   - cleanup_zone_identifier.py
   - pipeline_common.py
-  - tokenizer_bpe/
+  - tokenizer_bpe
     - __init__.py
     - byte_unicode.py
     - config.py
@@ -98,10 +190,10 @@ This is the canonical tracked structure of the repository as documented in `AGEN
     - stage1_count.py
     - stage2_init.py
     - stage3_train.py
-- src/
-  - llm_training/
+- src
+  - llm_training
     - __init__.py
-    - infra/
+    - infra
       - __init__.py
       - hashing.py
       - io_atomic.py
@@ -109,33 +201,33 @@ This is the canonical tracked structure of the repository as documented in `AGEN
       - manifest.py
       - resume.py
       - run_dir.py
-    - tokenizer/
+    - tokenizer
       - __init__.py
       - runtime.py
       - special.py
-- tests/
+- tests
   - __init__.py
   - conftest.py
-  - fixtures/
-    - tokenizer_bpe/
+  - fixtures
+    - tokenizer_bpe
       - tiny_corpus.txt
-  - infra/
+  - infra
     - test_atomic_io.py
     - test_hashing_manifest.py
-  - pipeline/
+  - pipeline
     - test_tokenize_pack_pipeline.py
   - test_cleanup_zone_identifier.py
-  - tokenizer_bpe/
+  - tokenizer_bpe
     - __init__.py
     - conftest.py
-  - helpers.py
-  - test_byte_unicode.py
-  - test_config.py
-  - test_config_owt_md_latex.py
-  - test_config_proof_pile_md_latex.py
-  - test_config_proof_pile.py
-  - test_config_tinystories_md_latex.py
-  - test_export.py
+    - helpers.py
+    - test_byte_unicode.py
+    - test_config.py
+    - test_config_owt_md_latex.py
+    - test_config_proof_pile.py
+    - test_config_proof_pile_md_latex.py
+    - test_config_tinystories_md_latex.py
+    - test_export.py
     - test_pretokenizer.py
     - test_runtime_check.py
     - test_stage1_count_unit.py
@@ -144,6 +236,6 @@ This is the canonical tracked structure of the repository as documented in `AGEN
     - test_stage3_recovery.py
     - test_train_tokenizer_determinism.py
     - test_train_tokenizer_resume.py
-  - tokenizer_runtime/
+  - tokenizer_runtime
     - test_runtime.py
 - what_comes_next.md

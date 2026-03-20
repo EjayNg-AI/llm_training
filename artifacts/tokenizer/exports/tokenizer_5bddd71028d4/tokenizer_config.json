@@ -40,7 +40,7 @@
     "<|function_call|>"
   ],
   "tokenizer_class": "GPT2Tokenizer",
-  "training_corpus_sha256": "7e734878ab9909acec5ff6999fe0c4b5e678fa28d5f65855bf19fe7eea64e0a7",
+  "training_corpus_sha256": "8ee32e2ee9a313e55c13f5326b7fe0e230ad0e5f54328f8dea72f2787239ed66",
   "unk_token": "<unk>",
   "vocab_size": 53974
 }

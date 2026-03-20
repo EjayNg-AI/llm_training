@@ -589,7 +589,15 @@ The deterministic `_counter_top_k` helper is unchanged. These controls only chan
 Final Stage 1 output:
 
 1. capped `Counter[bytes]` (if `max_unique_pieces` is set)
-2. metadata with `training_corpus_sha256` computed from sorted file path + file size + mtime_ns.
+2. metadata with `training_corpus_sha256` computed from a deterministic multi-file content hash over the sorted discovered input files.
+
+Fingerprint contract:
+
+1. Each discovered input file contributes its raw file-content SHA-256.
+2. The Stage 1 fingerprint hashes the ordered sequence of those per-file content hashes.
+3. File paths and mtimes do not affect `training_corpus_sha256`.
+4. Copying the same corpus bytes to a different path should preserve the fingerprint.
+5. Changing file contents changes the fingerprint and therefore changes derived tokenizer artifact IDs for new runs.
 
 ## 8) Stage 2: training state initialization
 
@@ -817,6 +825,8 @@ Current exported fields include:
 12. `training_corpus_sha256`
 13. `config_hash`
 14. `bos_token`, `eos_token`, `unk_token`, `pad_token` (from special token mapping rules)
+
+`training_corpus_sha256` is a content-based Stage 1 corpus fingerprint, not a path/mtime fingerprint.
 
 Also exported:
 

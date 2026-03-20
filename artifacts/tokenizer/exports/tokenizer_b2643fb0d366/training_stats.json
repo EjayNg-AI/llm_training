@@ -4,6 +4,6 @@
   "num_merges": 53696,
   "pattern_hash": "514140eadfea43cf8439a1a65a4e789c3852e2a39feaf3ccfec781ef8e960c5d",
   "run_dir": "artifacts/tokenizer/runs_tinystories_md_latex_train/tinystories_md_latex_bpe_64k_20260319_1943",
-  "training_corpus_sha256": "7e734878ab9909acec5ff6999fe0c4b5e678fa28d5f65855bf19fe7eea64e0a7",
+  "training_corpus_sha256": "8ee32e2ee9a313e55c13f5326b7fe0e230ad0e5f54328f8dea72f2787239ed66",
   "vocab_size": 53978
 }

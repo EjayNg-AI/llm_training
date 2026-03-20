@@ -16,6 +16,7 @@ import unicodedata
 
 from .io_atomic import atomic_dump_json, atomic_dump_pickle, load_pickle_with_checksum
 from .pretokenizer import compile_pattern, iter_pieces
+from llm_training.infra.hashing import sha256_file
 
 
 CHECKPOINT_DIR_NAME = "checkpoints"
@@ -155,10 +156,10 @@ def _prune_counter(counter: Counter[bytes], min_piece_freq: int, max_unique_piec
 def _compute_corpus_fingerprint(file_paths: list[Path]) -> str:
     h = hashlib.sha256()
     for path in sorted(file_paths):
-        stat = path.stat()
-        h.update(str(path).encode("utf-8"))
-        h.update(str(stat.st_size).encode("utf-8"))
-        h.update(str(stat.st_mtime_ns).encode("utf-8"))
+        file_hash = sha256_file(path)
+        h.update(b"pathless-file-sha256\0")
+        h.update(file_hash.encode("ascii"))
+        h.update(b"\0")
     return h.hexdigest()
 
 

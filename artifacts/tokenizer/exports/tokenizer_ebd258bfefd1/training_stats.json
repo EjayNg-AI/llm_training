@@ -4,6 +4,6 @@
   "num_merges": 63718,
   "pattern_hash": "026823bce947b4c1f05427f03a10eb8bfc44b339753649b09f804a260e9d8029",
   "run_dir": "artifacts/tokenizer/runs_owt_train/owt_bpe_64k_20260319_2003_manual",
-  "training_corpus_sha256": "663f182b09a3212d9631edccac3881d198c0f3d5e5eeb7914d3911ab17d5f36e",
+  "training_corpus_sha256": "a25a80d97a8de9994bd72540722f610e47a8efc5471e0a4222e0afd5d40bb2bf",
   "vocab_size": 64000
 }

@@ -14,6 +14,133 @@ Format:
 
 ## Unreleased
 
+### 2026-03-20 (Add Proof Pile 64k run comparison note)
+
+Summary:
+
+1. Added a repo-root Markdown note comparing the retained Proof Pile 64k GPT-2-fast and Markdown/LaTeX-aware tokenizer runs.
+2. Recorded the earlier comparison findings in one place, including config differences, vocabulary differences, token-count samples, caveats, and a recommended controlled follow-up.
+
+Impacted files/modules:
+
+1. `proof_pile_64k_run_comparison.md`
+2. `docs/DIRECTORY_STRUCTURE.md`
+3. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Not applicable beyond content capture; the note summarizes analysis already performed against the retained run artifacts and exports.
+
+Documentation updates:
+
+1. Updated `docs/DIRECTORY_STRUCTURE.md` to include the new tracked comparison note.
+
+### 2026-03-20 (Backfill existing tokenizer metadata to content-based corpus hashes)
+
+Summary:
+
+1. Rewrote existing tokenizer export metadata files so their recorded `training_corpus_sha256` values now match the new content-based Stage 1 fingerprint contract.
+2. Backfilled the live Proof Pile retained run metadata (`run_meta.json` and run-local `export_manifest.json`) to the same content-based hash.
+3. Updated registry entries that still point at existing tokenizer export directories so their `training_corpus` lineage hash matches the rewritten manifests.
+
+Impacted files/modules:
+
+1. `artifacts/tokenizer/exports/*/tokenizer_config.json`
+2. `artifacts/tokenizer/exports/*/training_stats.json`
+3. `artifacts/tokenizer/exports/*/artifact_manifest.json`
+4. `artifacts/tokenizer/runs_proof_pile_train/proof_pile_bpe_64k_20260320_1154/run_meta.json`
+5. `artifacts/tokenizer/runs_proof_pile_train/proof_pile_bpe_64k_20260320_1154/export_manifest.json`
+6. `artifacts/tokenizer/runs_proof_pile_md_latex_train/proof_pile_md_latex_bpe_64k_20260320_1326/run_meta.json`
+7. `artifacts/tokenizer/runs_proof_pile_md_latex_train/proof_pile_md_latex_bpe_64k_20260320_1326/export_manifest.json`
+8. `artifacts/registry.jsonl`
+9. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Verified every rewritten export now carries the expected content-based hash in `tokenizer_config.json`, `training_stats.json`, and `artifact_manifest.json`.
+2. Verified refreshed `artifact_manifest.json` checksums match the rewritten `tokenizer_config.json` and `training_stats.json`.
+3. Verified the two retained Proof Pile run metadata files now record the content-based Proof Pile corpus hash.
+
+Documentation updates:
+
+1. Added this changelog entry to record the metadata backfill.
+
+### 2026-03-20 (Make tokenizer Stage 1 corpus fingerprint content-based)
+
+Summary:
+
+1. Replaced the tokenizer Stage 1 `training_corpus_sha256` computation so it now hashes discovered input file contents instead of file paths, sizes, and mtimes.
+2. Kept the fingerprint deterministic across sorted discovered input files while making it stable across copies of the same corpus on different machines or paths.
+3. Added Stage 1 regression tests covering path/mtime independence and content-change sensitivity.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/stage1_count.py`
+2. `tests/tokenizer_bpe/test_stage1_count_unit.py`
+3. `docs/TOKENIZER_BPE.md`
+4. `docs/IMPLEMENTED_STEPS.md`
+5. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Pending targeted Stage 1 tokenizer pytest run.
+
+Documentation updates:
+
+1. Updated `docs/TOKENIZER_BPE.md` to document the new content-based fingerprint contract.
+2. Updated `docs/IMPLEMENTED_STEPS.md` Stage 03 notes to describe content-based corpus lineage hashing.
+
+### 2026-03-20 (Retain only Proof Pile 64k tokenizer run directories)
+
+Summary:
+
+1. Removed all tokenizer training run directories except the two Proof Pile 64k runs.
+2. Retained `proof_pile_bpe_64k_20260320_1154` and `proof_pile_md_latex_bpe_64k_20260320_1326` as the only remaining local Stage 03 run artifacts.
+3. Left tokenizer export artifacts and tracked BPE config files unchanged.
+
+Impacted files/modules:
+
+1. `artifacts/tokenizer/runs*` local and tracked run artifacts
+2. `docs/CHANGELOG.md`
+3. `docs/DIRECTORY_STRUCTURE.md`
+
+Validation status:
+
+1. Verified that only the two retained Proof Pile 64k run directories remain under `artifacts/tokenizer/runs*`.
+2. No automated tests were run because this change only removed run artifacts and updated documentation.
+
+Documentation updates:
+
+1. Recorded the retention-only cleanup in `docs/CHANGELOG.md`.
+2. Regenerated `docs/DIRECTORY_STRUCTURE.md` to match the remaining tracked files.
+
+### 2026-03-20 (Prune clearly incomplete local BPE run directories)
+
+Summary:
+
+1. Removed local tokenizer run directories that were clearly incomplete because they were missing most of the documented Stage 03 outputs, typically `merges.wal`, `wal.meta.json`, `export_manifest.json`, or even `run_meta.json` / `state.json`.
+2. Kept completed runs, including older historical runs that still have the required legacy artifacts for their generation.
+3. Left tracked BPE config files in `configs/` unchanged because none were malformed or obviously partial.
+
+Impacted files/modules:
+
+1. `artifacts/tokenizer/runs/*` local untracked run directories
+2. `artifacts/tokenizer/runs_owt_train/*` local untracked run directories
+3. `artifacts/tokenizer/runs_owt_train_md_latex/*` local untracked run directories
+4. `artifacts/tokenizer/runs_proof_pile_train/*` local untracked run directories
+5. `artifacts/tokenizer/runs_proof_pile_md_latex_train/*` local untracked run directories
+6. `artifacts/tokenizer/runs_tinystoriesv2_gpt4_train_32k/*` local untracked run directories
+7. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. Verified remaining BPE run directories still contain the expected run metadata or complete export artifacts.
+2. No automated tests were required because this change only removed incomplete local artifacts and updated documentation.
+
+Documentation updates:
+
+1. Added this changelog entry to record the cleanup criteria and scope.
+
 ### 2026-03-20 (Add repo-root Proof Pile Markdown/LaTeX run note)
 
 Summary:

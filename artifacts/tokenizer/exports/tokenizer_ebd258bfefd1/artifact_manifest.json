@@ -4,8 +4,8 @@
   "checksums": {
     "merges.txt": "b9c51d43cf4bcd4afb9ff20183e407e7c27407f543abcb4359394f319cd3b2d3",
     "special_tokens_map.json": "1ecac9ec78cf97057d231453f726132712ed3360b71d39869b23f7c205cf67b4",
-    "tokenizer_config.json": "4f8c5f6f34b573ca50b6dc5ad6e9f28d75b0685f01e52caf1b5c8f7fdaf0907f",
-    "training_stats.json": "6436d3987ce47d8548d4e890be27dc5b519562405c28184cbba738f39faf9222",
+    "tokenizer_config.json": "ed980ad8f086dc99fd41ac189d91671cbf468f4a1d335c487f34f4857c034734",
+    "training_stats.json": "9f5c3aa89f365658edef69f1a9173a2e38931501e1424a547f955a9ac073bb9f",
     "vocab.json": "d2f1f417735716b35e21cd65680b96c822079fd858ad77ac9e132faf478837ea"
   },
   "config_hash": "046ffef2b9af586c16b33a63ecf1de331b7a9b10a5918a58581f69ee46334c6f",
@@ -15,7 +15,7 @@
     {
       "artifact_id": "training_corpus",
       "artifact_type": "raw_files",
-      "hash": "663f182b09a3212d9631edccac3881d198c0f3d5e5eeb7914d3911ab17d5f36e"
+      "hash": "a25a80d97a8de9994bd72540722f610e47a8efc5471e0a4222e0afd5d40bb2bf"
     }
   ],
   "schema_version": "1.0",
@@ -25,7 +25,7 @@
     "num_merges": 63718,
     "pattern_alias": "gpt2_fast",
     "pattern_hash": "026823bce947b4c1f05427f03a10eb8bfc44b339753649b09f804a260e9d8029",
-    "training_corpus_sha256": "663f182b09a3212d9631edccac3881d198c0f3d5e5eeb7914d3911ab17d5f36e",
+    "training_corpus_sha256": "a25a80d97a8de9994bd72540722f610e47a8efc5471e0a4222e0afd5d40bb2bf",
     "vocab_size": 64000
   }
 }

@@ -66,6 +66,7 @@ Current behavior:
    - additive versioned Markdown/LaTeX-aware regex alias (`md_latex_fast_v1`) for experiment configs while keeping `gpt2_fast` as the default
    - Stage 1 multiprocessing piece counting with out-of-order worker completion and deterministic in-order merge application
    - Stage 1 special-token stripping after optional normalization and before regex pretokenization, so configured special-token literals never affect learned counts or merges
+   - Stage 1 corpus lineage fingerprinting based on deterministic input file contents rather than file paths or mtimes
    - configurable Stage 1 periodic top-K capping plus deterministic early safety-cap trimming when unique piece counts spike above `max_unique_pieces * stage1_cap_safety_factor`
    - expanded default special-token inventory covering BOS/EOS/PAD/UNK plus chat, FIM, and metadata/control markers
    - Stage 2/3 compact integer-array state (`array('H'/'I')` words + array-backed freqs)

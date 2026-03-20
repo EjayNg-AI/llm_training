@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
+import os
 
 from tokenizer_bpe.pretokenizer import PATTERN_ALIASES
 from tokenizer_bpe.stage1_count import (
     _compile_special_token_splitter,
+    _compute_corpus_fingerprint,
     _discover_input_files,
     _extract_text,
     _iter_non_special_segments,
@@ -91,6 +93,35 @@ def test_discover_input_files_jsonl_filters_and_sorts(tmp_path):
     files = _discover_input_files([str(data_dir)], "jsonl")
     assert files == sorted(files)
     assert {path.name for path in files} == {"a.jsonl", "b.jsonl", "c.jsonl.gz"}
+
+
+def test_compute_corpus_fingerprint_is_content_based_not_path_or_mtime(tmp_path):
+    left = tmp_path / "left.txt"
+    right_dir = tmp_path / "nested"
+    right_dir.mkdir()
+    right = right_dir / "renamed.txt"
+
+    payload = "alpha\nbeta\n"
+    left.write_text(payload, encoding="utf-8")
+    right.write_text(payload, encoding="utf-8")
+
+    old_mtime = 946684800  # 2000-01-01 UTC
+    new_mtime = 1735689600  # 2025-01-01 UTC
+    left.touch()
+    right.touch()
+    os.utime(left, (old_mtime, old_mtime))
+    os.utime(right, (new_mtime, new_mtime))
+
+    assert _compute_corpus_fingerprint([left]) == _compute_corpus_fingerprint([right])
+
+
+def test_compute_corpus_fingerprint_changes_when_content_changes(tmp_path):
+    left = tmp_path / "a.txt"
+    right = tmp_path / "b.txt"
+    left.write_text("alpha\n", encoding="utf-8")
+    right.write_text("beta\n", encoding="utf-8")
+
+    assert _compute_corpus_fingerprint([left]) != _compute_corpus_fingerprint([right])
 
 
 def test_extract_text_jsonl_cases():

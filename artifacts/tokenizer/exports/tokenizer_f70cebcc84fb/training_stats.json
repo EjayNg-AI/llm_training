@@ -4,6 +4,6 @@
   "num_merges": 63718,
   "pattern_hash": "514140eadfea43cf8439a1a65a4e789c3852e2a39feaf3ccfec781ef8e960c5d",
   "run_dir": "artifacts/tokenizer/runs_owt_train_md_latex/owt_md_latex_bpe_64k_20260319_1203am",
-  "training_corpus_sha256": "123513fc2f45865979926fbb96c1d1506e0ca65d513dc04b28736143210ddf72",
+  "training_corpus_sha256": "a25a80d97a8de9994bd72540722f610e47a8efc5471e0a4222e0afd5d40bb2bf",
   "vocab_size": 64000
 }
