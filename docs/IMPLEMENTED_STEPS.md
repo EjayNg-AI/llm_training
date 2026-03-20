@@ -63,7 +63,7 @@ Current behavior:
 
 1. Reuses existing tokenizer implementation modules under `scripts/tokenizer_bpe/`:
    - regex pretokenization
-   - additive versioned Markdown/LaTeX-aware regex aliases (`md_latex_fast_v1`, `md_latex_fast_v2`) for experiment/custom configs while keeping `gpt2_fast` as the default, with `md_latex_fast_v2` adding bounded `\begin{...}` / `\end{...}` marker handling for common environments plus anchored Markdown headings, full task-list openers, local math delimiters, and capped multi-character math affixes
+   - additive versioned Markdown/LaTeX-aware regex aliases (`md_latex_fast_v1`, `md_latex_fast_v2`, `md_latex_fast_v3`) for experiment/custom configs while keeping `gpt2_fast` as the default, with `md_latex_fast_v2` adding bounded `\begin{...}` / `\end{...}` marker handling for common environments plus anchored Markdown headings, full task-list openers, local math delimiters, and capped multi-character math affixes, and `md_latex_fast_v3` preserving those LaTeX rules while tightening Markdown handling to line-anchored or highly specific openers only
    - Stage 1 multiprocessing piece counting with out-of-order worker completion and deterministic in-order merge application
    - Stage 1 special-token stripping after optional normalization and before regex pretokenization, so configured special-token literals never affect learned counts or merges
    - Stage 1 corpus lineage fingerprinting based on deterministic input file contents rather than file paths or mtimes
@@ -94,7 +94,7 @@ Resume contract:
 2. Resume validates WAL hash binding (`wal.meta.json`) against current `config_hash`/`pattern_hash`.
 3. WAL replay enforces contiguous merge indices and non-noop replay merges.
 4. Default policy keeps `max_bytes`, `max_lines`, and `max_merges` unlimited unless set, while `max_unique_pieces` defaults to `3500000`, `max_word_types` defaults to `3000000`, and `vocab_size` defaults to `64000`.
-5. Default Stage 1 capping keeps `checkpointing.stage1_cap_every_batches=100`, `checkpointing.stage1_cap_start_lines=10000`, and `checkpointing.stage1_cap_safety_factor=1.10`, while the tracked Markdown/LaTeX-aware configs `configs/tokenizer_bpe_md_latex_experiment.yaml`, `configs/tokenizer_bpe_tinystories_md_latex_train.yaml`, `configs/tokenizer_bpe_owt_train_md_latex.yaml`, `configs/tokenizer_bpe_proof_pile_md_latex_train.yaml`, and `configs/tokenizer_bpe_proof_pile_md_latex_v2_train.yaml` tighten those knobs for markup-heavier corpora without changing repository defaults. The dedicated `configs/tokenizer_bpe_proof_pile_train.yaml` run continues to follow the repository-wide default `64000` target vocabulary size as well.
+5. Default Stage 1 capping keeps `checkpointing.stage1_cap_every_batches=100`, `checkpointing.stage1_cap_start_lines=10000`, and `checkpointing.stage1_cap_safety_factor=1.10`, while the tracked Markdown/LaTeX-aware configs `configs/tokenizer_bpe_md_latex_experiment.yaml`, `configs/tokenizer_bpe_tinystories_md_latex_train.yaml`, `configs/tokenizer_bpe_owt_train_md_latex.yaml`, `configs/tokenizer_bpe_proof_pile_md_latex_train.yaml`, `configs/tokenizer_bpe_proof_pile_md_latex_v2_train.yaml`, and `configs/tokenizer_bpe_proof_pile_md_latex_v3_train.yaml` tighten those knobs for markup-heavier corpora without changing repository defaults. The dedicated `configs/tokenizer_bpe_proof_pile_train.yaml` run continues to follow the repository-wide default `64000` target vocabulary size as well.
 
 ## Canonical Stage 04: Tokenize corpus (`scripts/04_tokenize_corpus.py`)
 

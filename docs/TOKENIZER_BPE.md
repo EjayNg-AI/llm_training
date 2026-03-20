@@ -238,6 +238,7 @@ Tracked Markdown/LaTeX-aware large-corpus run configs:
 - `configs/tokenizer_bpe_tinystories_md_latex_train.yaml`
 - `configs/tokenizer_bpe_proof_pile_md_latex_train.yaml`
 - `configs/tokenizer_bpe_proof_pile_md_latex_v2_train.yaml`
+- `configs/tokenizer_bpe_proof_pile_md_latex_v3_train.yaml`
 
 Default configuration:
 
@@ -443,10 +444,29 @@ PATTERN_ALIASES = {
         r"| ?[^\s\p{L}\p{N}]++"
         r"|\s++$|\s+(?!\S)|\s"
     ),
+    "md_latex_fast_v3": (
+        r"'(?:[sdmt]|ll|ve|re)"
+        r"| ?\\(?:begin|end)\{(?:align|alignat|aligned|equation|gather|gathered|multline|cases|split|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|smallmatrix|array|tabular|itemize|enumerate|proof|theorem|lemma|corollary)\*?\}"
+        r"| ?(?:\$\$|\$|\\\(|\\\)|\\\[|\\\])"
+        r"| ?\\(?:[A-Za-z@]+[*]?|.)"
+        r"| ?[_^](?:\{\\(?:text|mathrm|mathbf|mathit|operatorname)\{[\p{L}\p{N} .,:;+\-]{1,24}\}\}|\{(?:\\[A-Za-z@]+[*]?|[\p{L}\p{N}+\-*/=.,:;()]){1,16}\}|[\p{L}\p{N}])"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}(?:`{3,}|~{3,})[A-Za-z0-9_+-]*(?=[ \t]*$)"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}#{1,6}(?=[ \t])"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}[-+*][ \t]+\[[ xX]\](?=[ \t]|$)"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}\d{1,3}[.)](?=[ \t])"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}>{1,3}(?=[ \t]|$)"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}\[[^\]\n]{1,80}\]:(?=[ \t])"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}(?:-{3,}|\*{3,}|_{3,})(?=[ \t]*$)"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}\|(?=[^\n]*\|)"
+        r"| ?\p{L}++"
+        r"| ?\p{N}++"
+        r"| ?[^\s\p{L}\p{N}]++"
+        r"|\s++$|\s+(?!\S)|\s"
+    ),
 }
 ```
 
-`gpt2_fast` is the default in config. `gpt2_default` is kept for canonical GPT-2 pattern compatibility. `md_latex_fast_v1` and `md_latex_fast_v2` are additive experiment aliases intended for Markdown/LaTeX-heavy corpora.
+`gpt2_fast` is the default in config. `gpt2_default` is kept for canonical GPT-2 pattern compatibility. `md_latex_fast_v1`, `md_latex_fast_v2`, and `md_latex_fast_v3` are additive experiment aliases intended for Markdown/LaTeX-heavy corpora.
 
 `md_latex_fast_v1` behavior:
 
@@ -466,6 +486,15 @@ PATTERN_ALIASES = {
 6. Keeps only bounded local markers atomic; the environment body is still tokenized by the normal branches.
 7. Leaves trailing environment arguments such as `\begin{array}{cc}` split after the bounded marker so the pattern does not create longer arbitrary-span pieces.
 8. Falls back to the generic backslash-command branch for non-whitelisted custom environment names.
+
+`md_latex_fast_v3` behavior:
+
+1. Preserves the `md_latex_fast_v2` LaTeX contracts: bounded whitelisted `\begin{...}` / `\end{...}` markers, local math delimiters, and capped `_` / `^` affix groups.
+2. Applies a stricter Markdown rule: if a Markdown pattern cannot be anchored to line structure or reduced to a narrowly scoped opener, it is not special-cased.
+3. Keeps fenced-code openers local at line start, including optional language tags such as `````python``.
+4. Keeps Markdown headings, ordered-list openers, task-list openers, blockquote prefixes, reference-link labels, horizontal-rule/front-matter delimiters, and line-start table-row pipes local when they appear in structurally valid line-start positions.
+5. Removes the unanchored inline task-box branch from v2 so `[x]` inside normal prose falls back to the generic punctuation/letter branches.
+6. Continues to avoid whole-span Markdown matches for links, code blocks, tables, or paragraphs; only bounded structural markers are made atomic.
 
 Supported flags via config:
 

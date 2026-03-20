@@ -1,0 +1,11 @@
+{
+  "affected_word_types": 58,
+  "best_pair_count": 437,
+  "heap_size": 7920964,
+  "merge_index": 62000,
+  "stage": "merge_training",
+  "target_merges": 63718,
+  "timestamp": 1774001783,
+  "unique_pairs": 1939676,
+  "vocab_size_so_far": 62256
+}

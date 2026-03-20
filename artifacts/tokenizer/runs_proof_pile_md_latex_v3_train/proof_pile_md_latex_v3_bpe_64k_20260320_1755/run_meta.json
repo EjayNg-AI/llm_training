@@ -1,0 +1,23 @@
+{
+  "config_hash": "2e788155a6f7cb6cbd20f3a7e73c7dcee3f646b12db4a30a9aa59b6db70e3d42",
+  "config_path": "/home/jenni/llm_training/configs/tokenizer_bpe_proof_pile_md_latex_v3_train.yaml",
+  "ended_at": "2026-03-20T10:16:34Z",
+  "git_commit": "7da8c6f7c289838b02d9e76ece9dfb9298aab56e",
+  "hostname": "LAPTOP-LICO2515",
+  "inputs": {
+    "input_paths": [
+      "data/raw/proof_pile.txt"
+    ]
+  },
+  "pid": 3493,
+  "python_version": "3.12.3",
+  "run_id": "proof_pile_md_latex_v3_bpe_64k_20260320_1755",
+  "stage": "03_train_tokenizer",
+  "started_at": "2026-03-20T09:56:01Z",
+  "status": "completed",
+  "summary": {
+    "artifact_id": "tokenizer_a40b41939dd9",
+    "num_merges": 63718,
+    "training_corpus_sha256": "d91e3a3e8747c2f4fae030950b0e3e1ff5d781f81a36e59474099706ef652172"
+  }
+}

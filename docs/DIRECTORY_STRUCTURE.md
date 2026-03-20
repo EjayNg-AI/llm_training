@@ -135,6 +135,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
   - tokenizer_bpe_owt_train_md_latex.yaml
   - tokenizer_bpe_proof_pile_md_latex_train.yaml
   - tokenizer_bpe_proof_pile_md_latex_v2_train.yaml
+  - tokenizer_bpe_proof_pile_md_latex_v3_train.yaml
   - tokenizer_bpe_proof_pile_train.yaml
   - tokenizer_bpe_tinystories_32k_train.yaml
   - tokenizer_bpe_tinystories_md_latex_train.yaml
@@ -228,6 +229,7 @@ This is the canonical tracked structure of the repository as documented in `AGEN
     - test_config_proof_pile.py
     - test_config_proof_pile_md_latex.py
     - test_config_proof_pile_md_latex_v2.py
+    - test_config_proof_pile_md_latex_v3.py
     - test_config_tinystories_md_latex.py
     - test_export.py
     - test_pretokenizer.py

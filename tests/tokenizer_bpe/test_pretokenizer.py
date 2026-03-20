@@ -108,6 +108,66 @@ def test_md_latex_fast_v2_keeps_capped_multi_character_math_affixes():
     assert list(iter_pieces(compiled, r"x_{\text{max}}")) == ["x", r"_{\text{max}}"]
 
 
+def test_md_latex_fast_v3_preserves_v2_latex_environment_behavior():
+    compiled = _compile_alias("md_latex_fast_v3")
+    text = r"\begin{align*} x + y \end{align*}"
+    pieces = list(iter_pieces(compiled, text))
+    assert pieces == [r"\begin{align*}", " x", " +", " y", r" \end{align*}"]
+
+
+def test_md_latex_fast_v3_preserves_local_math_delimiters_and_affixes():
+    compiled = _compile_alias("md_latex_fast_v3")
+    assert list(iter_pieces(compiled, "$$x+y$$")) == ["$$", "x", "+", "y", "$$"]
+    assert list(iter_pieces(compiled, r"\(x_{ij}+y^{n+1}\)")) == [r"\(", "x", r"_{ij}", "+", "y", r"^{n+1}", r"\)"]
+
+
+def test_md_latex_fast_v3_keeps_headings_line_anchored():
+    compiled = _compile_alias("md_latex_fast_v3")
+    assert list(iter_pieces(compiled, "### Title")) == ["###", " Title"]
+    assert list(iter_pieces(compiled, "See ### Title")) == ["See", " ###", " Title"]
+
+
+def test_md_latex_fast_v3_keeps_task_lists_but_not_inline_task_boxes():
+    compiled = _compile_alias("md_latex_fast_v3")
+    assert list(iter_pieces(compiled, "- [x] done")) == ["- [x]", " done"]
+    assert list(iter_pieces(compiled, "Use [x] inline")) == ["Use", " [", "x", "]", " inline"]
+
+
+def test_md_latex_fast_v3_keeps_ordered_list_openers_line_anchored():
+    compiled = _compile_alias("md_latex_fast_v3")
+    assert list(iter_pieces(compiled, "12. item")) == ["12.", " item"]
+    assert list(iter_pieces(compiled, "3) item")) == ["3)", " item"]
+    assert list(iter_pieces(compiled, "In 3) we proceed")) == ["In", " 3", ")", " we", " proceed"]
+
+
+def test_md_latex_fast_v3_keeps_fenced_code_openers_local():
+    compiled = _compile_alias("md_latex_fast_v3")
+    assert list(iter_pieces(compiled, "```python")) == ["```python"]
+    assert list(iter_pieces(compiled, "~~~")) == ["~~~"]
+    assert list(iter_pieces(compiled, "Use ```python")) == ["Use", " ```", "python"]
+
+
+def test_md_latex_fast_v3_keeps_blockquotes_and_reference_labels_line_anchored():
+    compiled = _compile_alias("md_latex_fast_v3")
+    assert list(iter_pieces(compiled, "> quoted")) == [">", " quoted"]
+    assert list(iter_pieces(compiled, "[lemma]: https://example.test")) == [
+        "[lemma]:",
+        " https",
+        "://",
+        "example",
+        ".",
+        "test",
+    ]
+    assert list(iter_pieces(compiled, "See [lemma]: note")) == ["See", " [", "lemma", "]:", " note"]
+
+
+def test_md_latex_fast_v3_keeps_table_rows_and_hrules_line_anchored():
+    compiled = _compile_alias("md_latex_fast_v3")
+    assert list(iter_pieces(compiled, "| a | b |")) == ["|", " a", " |", " b", " |"]
+    assert list(iter_pieces(compiled, "---")) == ["---"]
+    assert list(iter_pieces(compiled, "x --- y")) == ["x", " ---", " y"]
+
+
 def test_custom_pattern_requires_value():
     with pytest.raises(ValueError, match="custom_pattern"):
         resolve_pattern({"pattern": "custom", "custom_pattern": None, "flags": []})

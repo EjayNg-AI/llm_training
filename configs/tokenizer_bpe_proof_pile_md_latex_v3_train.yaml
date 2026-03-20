@@ -1,0 +1,22 @@
+run:
+  output_dir: "artifacts/tokenizer/runs_proof_pile_md_latex_v3_train"
+
+data:
+  input_paths:
+    - "data/raw/proof_pile.txt"
+  normalize: "none"
+  num_workers: 3
+  batch_lines: 1500
+
+pretokenizer:
+  pattern: "md_latex_fast_v3"
+  custom_pattern: null
+  flags: []
+
+bpe:
+  vocab_size: 64000
+
+checkpointing:
+  stage1_cap_every_batches: 50
+  stage1_cap_start_lines: 5000
+  stage1_cap_safety_factor: 1.05

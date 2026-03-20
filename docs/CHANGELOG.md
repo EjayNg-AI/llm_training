@@ -14,6 +14,61 @@ Format:
 
 ## Unreleased
 
+### 2026-03-20 (Add Proof Pile md_latex_fast_v3 training config)
+
+Summary:
+
+1. Added a dedicated Proof Pile tokenizer config wired to the conservative `md_latex_fast_v3` alias while reusing the existing large-corpus worker, batch, and Stage 1 safety-cap tuning.
+2. Added a config regression test and documented the exact train and resume commands for the new v3 run path.
+
+Impacted files/modules:
+
+1. `configs/tokenizer_bpe_proof_pile_md_latex_v3_train.yaml`
+2. `tests/tokenizer_bpe/test_config_proof_pile_md_latex_v3.py`
+3. `README.md`
+4. `docs/TOKENIZER_BPE.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `docs/DIRECTORY_STRUCTURE.md`
+7. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_config_proof_pile_md_latex_v3.py` passed (`1 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe/test_pretokenizer.py` passed (`25 passed`).
+
+Documentation updates:
+
+1. Updated `README.md` with the exact Proof Pile `md_latex_fast_v3` train and resume commands.
+2. Updated `docs/TOKENIZER_BPE.md` and `docs/IMPLEMENTED_STEPS.md` to include the tracked v3 Proof Pile config.
+3. Updated `docs/DIRECTORY_STRUCTURE.md` to include the new config and regression test.
+
+### 2026-03-20 (Add conservative md_latex_fast_v3 tokenizer alias)
+
+Summary:
+
+1. Added a new versioned pretokenizer alias `md_latex_fast_v3` that preserves the current bounded LaTeX handling while tightening Markdown handling to line-anchored structures or narrowly scoped openers only.
+2. Removed the unanchored inline task-box special case from the new alias and added conservative Markdown handling for fenced-code openers, ordered-list openers, blockquote prefixes, reference-link labels, horizontal rules, and line-start table pipes.
+3. Added focused regression tests to keep the v2 LaTeX behavior intact while enforcing the new conservative Markdown contract.
+
+Impacted files/modules:
+
+1. `scripts/tokenizer_bpe/pretokenizer.py`
+2. `tests/tokenizer_bpe/test_pretokenizer.py`
+3. `README.md`
+4. `docs/TOKENIZER_BPE.md`
+5. `docs/IMPLEMENTED_STEPS.md`
+6. `docs/CHANGELOG.md`
+
+Validation status:
+
+1. `python -m pytest -q tests/tokenizer_bpe/test_pretokenizer.py` passed (`25 passed`).
+2. `python -m pytest -q tests/tokenizer_bpe/test_stage1_count_unit.py` passed (`12 passed`).
+
+Documentation updates:
+
+1. Updated `README.md` to note that `md_latex_fast_v3` is available for custom tokenizer configs.
+2. Updated `docs/TOKENIZER_BPE.md` and `docs/IMPLEMENTED_STEPS.md` to document the new alias and its conservative Markdown contract.
+
 ### 2026-03-20 (Add Proof Pile md_latex_fast_v2 training config)
 
 Summary:
