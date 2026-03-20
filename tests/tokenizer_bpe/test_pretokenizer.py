@@ -52,6 +52,62 @@ def test_md_latex_fast_v1_heading_and_task_box():
     assert list(iter_pieces(compiled, "[x] done")) == ["[x]", " done"]
 
 
+def test_md_latex_fast_v2_keeps_bounded_latex_environment_markers():
+    compiled = _compile_alias("md_latex_fast_v2")
+    text = r"\begin{align*} x + y \end{align*}"
+    pieces = list(iter_pieces(compiled, text))
+    assert pieces == [r"\begin{align*}", " x", " +", " y", r" \end{align*}"]
+
+
+def test_md_latex_fast_v2_keeps_environment_markers_local_not_whole_span():
+    compiled = _compile_alias("md_latex_fast_v2")
+    text = r"\begin{equation}x+y\end{equation}"
+    pieces = list(iter_pieces(compiled, text))
+    assert "".join(pieces) == text
+    assert pieces[0] == r"\begin{equation}"
+    assert pieces[-1] == r"\end{equation}"
+    assert pieces != [text]
+
+
+def test_md_latex_fast_v2_does_not_atomicize_custom_environment_names():
+    compiled = _compile_alias("md_latex_fast_v2")
+    text = r"\begin{myenv} body"
+    pieces = list(iter_pieces(compiled, text))
+    assert pieces == [r"\begin", "{", "myenv", "}", " body"]
+
+
+def test_md_latex_fast_v2_leaves_trailing_env_args_split():
+    compiled = _compile_alias("md_latex_fast_v2")
+    text = r"\begin{array}{cc}"
+    pieces = list(iter_pieces(compiled, text))
+    assert pieces == [r"\begin{array}", "{", "cc", "}"]
+
+
+def test_md_latex_fast_v2_anchors_headings_to_line_start():
+    compiled = _compile_alias("md_latex_fast_v2")
+    assert list(iter_pieces(compiled, "### Title")) == ["###", " Title"]
+    assert list(iter_pieces(compiled, "See ### Title")) == ["See", " ###", " Title"]
+
+
+def test_md_latex_fast_v2_keeps_full_task_list_opener():
+    compiled = _compile_alias("md_latex_fast_v2")
+    assert list(iter_pieces(compiled, "- [x] done")) == ["- [x]", " done"]
+    assert list(iter_pieces(compiled, "  * [ ] todo")) == ["  * [ ]", " todo"]
+
+
+def test_md_latex_fast_v2_keeps_bounded_math_delimiters():
+    compiled = _compile_alias("md_latex_fast_v2")
+    assert list(iter_pieces(compiled, "$$x+y$$")) == ["$$", "x", "+", "y", "$$"]
+    assert list(iter_pieces(compiled, r"\(x+y\)")) == [r"\(", "x", "+", "y", r"\)"]
+
+
+def test_md_latex_fast_v2_keeps_capped_multi_character_math_affixes():
+    compiled = _compile_alias("md_latex_fast_v2")
+    assert list(iter_pieces(compiled, r"x_{ij}")) == ["x", r"_{ij}"]
+    assert list(iter_pieces(compiled, r"x^{n+1}")) == ["x", r"^{n+1}"]
+    assert list(iter_pieces(compiled, r"x_{\text{max}}")) == ["x", r"_{\text{max}}"]
+
+
 def test_custom_pattern_requires_value():
     with pytest.raises(ValueError, match="custom_pattern"):
         resolve_pattern({"pattern": "custom", "custom_pattern": None, "flags": []})

@@ -33,6 +33,20 @@ PATTERN_ALIASES: dict[str, str] = {
         r"| ?[^\s\p{L}\p{N}]++"
         r"|\s++$|\s+(?!\S)|\s"
     ),
+    "md_latex_fast_v2": (
+        r"'(?:[sdmt]|ll|ve|re)"
+        r"| ?\\(?:begin|end)\{(?:align|alignat|aligned|equation|gather|gathered|multline|cases|split|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|smallmatrix|array|tabular|itemize|enumerate|proof|theorem|lemma|corollary)\*?\}"
+        r"| ?(?:\$\$|\$|\\\(|\\\)|\\\[|\\\])"
+        r"| ?\\(?:[A-Za-z@]+[*]?|.)"
+        r"| ?[_^](?:\{\\(?:text|mathrm|mathbf|mathit|operatorname)\{[\p{L}\p{N} .,:;+\-]{1,24}\}\}|\{(?:\\[A-Za-z@]+[*]?|[\p{L}\p{N}+\-*/=.,:;()]){1,16}\}|[\p{L}\p{N}])"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}#{1,6}(?=[ \t])"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}[-+*][ \t]+\[[ xX]\](?=[ \t]|$)"
+        r"| ?\[[ xX]\](?=[ \t])"
+        r"| ?\p{L}++"
+        r"| ?\p{N}++"
+        r"| ?[^\s\p{L}\p{N}]++"
+        r"|\s++$|\s+(?!\S)|\s"
+    ),
 }
 
 FLAG_ALIASES = {

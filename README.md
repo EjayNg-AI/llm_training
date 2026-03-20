@@ -190,9 +190,21 @@ Resume that exact run:
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_md_latex_train.yaml --resume --run-id proof_pile_md_latex_bpe_64k_<date_tag>
 ```
 
+For the bounded-environment `md_latex_fast_v2` Proof Pile run, use the dedicated v2 config:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_md_latex_v2_train.yaml --run-id proof_pile_md_latex_v2_bpe_64k_<date_tag>
+```
+
+Resume that exact v2 run:
+
+```bash
+python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_proof_pile_md_latex_v2_train.yaml --resume --run-id proof_pile_md_latex_v2_bpe_64k_<date_tag>
+```
+
 ### 9) Run the Markdown/LaTeX tokenizer experiment config (optional)
 
-The versioned alias `md_latex_fast_v1` is available for A/B runs through the dedicated experiment config. It keeps `gpt2_fast` as the repository default while making local LaTeX commands, `_`/`^` affixes, Markdown headings, and task boxes tokenizable as smaller units.
+The dedicated experiment config uses the versioned alias `md_latex_fast_v1` for A/B runs. The repository also exposes `md_latex_fast_v2` for custom tokenizer configs when you want the same local Markdown/LaTeX handling plus bounded `\begin{...}` / `\end{...}` markers, line-start Markdown headings, full task-list openers, local math delimiters, and capped multi-character `_` / `^` groups without making whole math spans or environment bodies atomic.
 
 ```bash
 python scripts/03_train_tokenizer.py --config configs/tokenizer_bpe_md_latex_experiment.yaml --run-id md_latex_bpe_<date_tag>

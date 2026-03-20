@@ -1,0 +1,31 @@
+{
+  "artifact_id": "tokenizer_d186c2fb8fa8",
+  "artifact_type": "tokenizer",
+  "checksums": {
+    "merges.txt": "60d570da9f97c9ddaf1d0168b25e1063df38c64f5e2a50d1c65e9ba3f029da81",
+    "special_tokens_map.json": "1ecac9ec78cf97057d231453f726132712ed3360b71d39869b23f7c205cf67b4",
+    "tokenizer_config.json": "a6e55aca40f3342f162483d709d5e4ce1fc9bfb226e89eac9588803b1073fd47",
+    "training_stats.json": "794785ec12a79bcc334641b595a1bf1836bd29ebaa78384ac6f6f21b40e4882e",
+    "vocab.json": "d977c4493c58f91bcf009042fc052c5e24a95453b8c7cf01f50b272cf70df910"
+  },
+  "config_hash": "1b05f1502621667fa683e90b4e62561ccb9897af1e498de5f5c53e300e74a2fb",
+  "created_at": "2026-03-20T08:35:11Z",
+  "git_commit": "1b34801e4022a92f73787beb8b92a28fdc31e44d",
+  "inputs": [
+    {
+      "artifact_id": "training_corpus",
+      "artifact_type": "raw_files",
+      "hash": "d91e3a3e8747c2f4fae030950b0e3e1ff5d781f81a36e59474099706ef652172"
+    }
+  ],
+  "schema_version": "1.0",
+  "source_run_id": "proof_pile_md_latex_v2_bpe_64k_20260320_1620",
+  "stats": {
+    "export_dir": "artifacts/tokenizer/exports/tokenizer_d186c2fb8fa8",
+    "num_merges": 63718,
+    "pattern_alias": "md_latex_fast_v2",
+    "pattern_hash": "32b826357fd24b8ae9d7cd7e2e77f0cdb09134b3210182f3f4b8af92910dde7b",
+    "training_corpus_sha256": "d91e3a3e8747c2f4fae030950b0e3e1ff5d781f81a36e59474099706ef652172",
+    "vocab_size": 64000
+  }
+}

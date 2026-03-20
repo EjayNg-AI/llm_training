@@ -237,6 +237,7 @@ Tracked Markdown/LaTeX-aware large-corpus run configs:
 - `configs/tokenizer_bpe_owt_train_md_latex.yaml`
 - `configs/tokenizer_bpe_tinystories_md_latex_train.yaml`
 - `configs/tokenizer_bpe_proof_pile_md_latex_train.yaml`
+- `configs/tokenizer_bpe_proof_pile_md_latex_v2_train.yaml`
 
 Default configuration:
 
@@ -428,10 +429,24 @@ PATTERN_ALIASES = {
         r"| ?[^\s\p{L}\p{N}]++"
         r"|\s++$|\s+(?!\S)|\s"
     ),
+    "md_latex_fast_v2": (
+        r"'(?:[sdmt]|ll|ve|re)"
+        r"| ?\\(?:begin|end)\{(?:align|alignat|aligned|equation|gather|gathered|multline|cases|split|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|smallmatrix|array|tabular|itemize|enumerate|proof|theorem|lemma|corollary)\*?\}"
+        r"| ?(?:\$\$|\$|\\\(|\\\)|\\\[|\\\])"
+        r"| ?\\(?:[A-Za-z@]+[*]?|.)"
+        r"| ?[_^](?:\{\\(?:text|mathrm|mathbf|mathit|operatorname)\{[\p{L}\p{N} .,:;+\-]{1,24}\}\}|\{(?:\\[A-Za-z@]+[*]?|[\p{L}\p{N}+\-*/=.,:;()]){1,16}\}|[\p{L}\p{N}])"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}#{1,6}(?=[ \t])"
+        r"|(?:\A|(?<=\n))[ \t]{0,3}[-+*][ \t]+\[[ xX]\](?=[ \t]|$)"
+        r"| ?\[[ xX]\](?=[ \t])"
+        r"| ?\p{L}++"
+        r"| ?\p{N}++"
+        r"| ?[^\s\p{L}\p{N}]++"
+        r"|\s++$|\s+(?!\S)|\s"
+    ),
 }
 ```
 
-`gpt2_fast` is the default in config. `gpt2_default` is kept for canonical GPT-2 pattern compatibility. `md_latex_fast_v1` is an additive experiment alias intended for Markdown/LaTeX-heavy corpora.
+`gpt2_fast` is the default in config. `gpt2_default` is kept for canonical GPT-2 pattern compatibility. `md_latex_fast_v1` and `md_latex_fast_v2` are additive experiment aliases intended for Markdown/LaTeX-heavy corpora.
 
 `md_latex_fast_v1` behavior:
 
@@ -440,6 +455,17 @@ PATTERN_ALIASES = {
 3. Adds only local Markdown heads for `###`-style headings and `[x]` / `[ ]` task boxes.
 4. Does not add whole-span atomic matches for inline math, display math, links, URLs, code fences, or LaTeX environments.
 5. Leaves ordered-list numbering and generic bullet punctuation to the existing number and punctuation branches.
+
+`md_latex_fast_v2` behavior:
+
+1. Preserves all `md_latex_fast_v1` local command, affix, heading, and task-box behavior.
+2. Adds bounded `\begin{...}` / `\end{...}` markers for a whitelist of common LaTeX environments, including starred forms such as `\begin{align*}` and `\end{equation*}`.
+3. Adds local math-delimiter handling for `$$`, `$`, `\(`, `\)`, `\[`, and `\]` without turning whole math spans into one piece.
+4. Expands `_` / `^` handling to bounded multi-character groups such as `_{ij}`, `^{n+1}`, and capped text-like forms such as `_{\text{max}}`.
+5. Restricts Markdown heading matches to line starts (with optional indentation) and adds full task-list opener matches such as `- [x]` and `* [ ]`.
+6. Keeps only bounded local markers atomic; the environment body is still tokenized by the normal branches.
+7. Leaves trailing environment arguments such as `\begin{array}{cc}` split after the bounded marker so the pattern does not create longer arbitrary-span pieces.
+8. Falls back to the generic backslash-command branch for non-whitelisted custom environment names.
 
 Supported flags via config:
 
